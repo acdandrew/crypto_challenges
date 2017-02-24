@@ -13,7 +13,7 @@ pub struct EncodedString {
 
 pub trait EncodedStringInterface {
     fn get_val(&self) -> & String;
-    fn get_bytes(&self) -> Vec<u8>;
+    fn get_bytes(&self) -> Option<Vec<u8>>;
 }
 
 impl EncodedStringInterface for EncodedString {
@@ -21,16 +21,17 @@ impl EncodedStringInterface for EncodedString {
         &self.val
     }
 
-    fn get_bytes(&self) -> Vec<u8>
+    fn get_bytes(&self) -> Option<Vec<u8>>
     {
         if self.val.len() % 2 == 0 {
             let mut v = Vec::with_capacity(self.val.len() / 2);
         
 
-            v
+            Some(v)
         } else {
             println!("String is not a valid multiple of 2");
-            Vec::new()
+            None 
+        }
 
     }
 }
