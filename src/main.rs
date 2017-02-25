@@ -13,9 +13,9 @@ fn main() {
 		val : "".to_string()
 	};
 
-	let f = match File::open("input.txt") {
+	let f = match File::open("data/s1c1.txt") {
 		Ok(file) => {file},
-		Err(e) => { panic!("Failed to open file {}\n", e) },
+		Err(e) => { panic!("Failed to open file {:?} with error {}\n",std::env::current_dir(), e) },
 	};
 		
 	let mut reader = BufReader::new(f);
