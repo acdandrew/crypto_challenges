@@ -31,6 +31,8 @@ fn main() {
 	b64.val = buffer;	
 	println!("Test func returns : {}", b64.get_val());
     println!("Bytes are : {:?}", b64.get_bytes());
+    b64.convert_to_b64();
+    println!("b64 string is  {:?}", b64.get_val());
 }
 
 
