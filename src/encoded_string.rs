@@ -48,7 +48,7 @@ impl EncodedStringInterface for EncodedString {
         //TODO Implement returning Result instead of Option
         match self.encoding {
             EncodingType::Hex => { 
-                if self.val.len() != 0 && ((self.val.len() - 1) % 2 == 0) {
+                if self.val.len() != 0 && ((self.val.len()) % 2 == 0) {
                     let mut v : Vec<u8> = Vec::with_capacity(self.val.len() / 2);
                     let mut high_order = false;
                     let mut current_byte = 0;
