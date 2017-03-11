@@ -1,38 +1,18 @@
 extern crate crypto_pals;
-use std::io::prelude::*;
-use std::io::BufReader;
-use std::fs::File;
 
 use crypto_pals::encoded_string;
 use crypto_pals::encoded_string::*;
+use crypto_pals::encryption_utilities::*;
 
 
 fn main() { 
-	let mut b64  =  encoded_string::EncodedString { 
+	let crypt  =  encoded_string::EncodedString { 
 		encoding : encoded_string::EncodingType::Hex,
-		val : "".to_string()
+		val : "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736".to_string()
 	};
 
-	let f = match File::open("data/s1c1.txt") {
-		Ok(file) => {file},
-		Err(e) => { panic!("Failed to open file {:?} with error {}\n",std::env::current_dir(), e) },
-	};
-		
-	let mut reader = BufReader::new(f);
-	let mut buffer = String::new();
-
-	// read a line
-	if let Err(e) = reader.read_line(&mut buffer) {
-		println!("Read line failed {}\n", e);
-		panic!("Exiting!\n");
-    }
-
-	
-	b64.val = buffer;	
-	println!("Test func returns : {}", b64.get_val());
-    println!("Bytes are : {:?}", b64.get_bytes());
-    b64.convert_to_b64();
-    println!("b64 string is  {:?}", b64.get_val());
+        
+    xor_cipher_freq_analysis( &crypt.get_bytes().expect(""));
 }
 
 
