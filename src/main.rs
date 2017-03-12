@@ -12,7 +12,10 @@ fn main() {
 	};
 
         
-    xor_cipher_freq_analysis( &crypt.get_bytes().expect(""));
+    for s in xor_cipher_freq_analysis( &crypt.get_bytes().expect(""))
+    {
+        println!("{}", s);
+    }
 }
 
 

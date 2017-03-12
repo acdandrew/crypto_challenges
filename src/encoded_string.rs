@@ -1,9 +1,11 @@
 use std::vec::Vec;
 
+#[derive(Clone, Copy)]
 pub enum EncodingType {
 	Hex,
 	Base64,
 	Binary,
+    Ascii,
 }
 
 fn nibble_from_char(val : char ) -> u8
@@ -79,6 +81,9 @@ impl EncodedStringInterface for EncodedString {
             EncodingType::Binary => {
                 panic!("Used unimplemented function {} {}", file!(), line!());
             },
+            EncodingType::Ascii => {
+                panic!("Used unimplemented function {} {}", file!(), line!());
+            },
         }
     }
 
@@ -125,4 +130,21 @@ impl EncodedStringInterface for EncodedString {
             }
         }
     }
+}
+
+pub fn encoded_string_from_bytes(input : Vec<u8>, enc: EncodingType) -> Option<EncodedString>
+{
+    let mut result = EncodedString {  encoding : enc, val : String::with_capacity(input.len())};
+
+    match enc{
+        EncodingType::Ascii => {
+            for a in input {
+               result.val.push(a as char);
+            }
+        },
+        _ => { panic!("unimplemented function called at {} {}", file!(), line!());
+        }
+    }
+
+    Some(result)
 }
