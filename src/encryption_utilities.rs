@@ -37,7 +37,8 @@ pub fn score_english_text_freq(input : &Vec<u8>) -> u32
     let mut input_freq : Vec<u32> = vec![0; 26]; 
     let mut normal_freq : Vec<f64> = vec![0.0;26];
     let mut score = 0;
-    //println!("Entered score with input {:?}", input);
+    let non_english_penalty = 10;
+
     for letter in input {
         match *letter as char {
             'a'...'z' => {
@@ -48,15 +49,19 @@ pub fn score_english_text_freq(input : &Vec<u8>) -> u32
                 let index = (letter - ('A' as u8)) as usize;
                 input_freq[index] = input_freq[index] + 1;
             },
-            _ => {}
+            ' ' | '.' | '?' => {},
+            _ => {score = score + non_english_penalty}
         }
     }
 
+    //
+    // attempt at MSE scoring
+    //
     for i in 0..26 {
         normal_freq[i] = input_freq[i] as f64 / input.len() as f64;
         score = score + (normal_freq[i] - ENGLISH_FREQUENCIES[i]).powf(2.0) as u32;
     }
-    println!("Exiting score english text with score  {:?}", score); 
+    //println!("Exiting score english text with score  {:?}", score); 
     score 
 }
 
@@ -70,19 +75,19 @@ pub fn xor_cipher_freq_analysis( input :& Vec<u8>) -> Vec<String>
     // Loop over each possible key and score it using english letter frequency
     //
     for candidate in 0..256 {
+        let explicit_type : u32 = candidate; // this is because rust compiler infers candidate as u8
+                                             // and does some weird undefined behavior
         let decrypted = xor_two_vecs(input,  &vec_b);
         scores.push((candidate as u8, score_english_text_freq(&decrypted)));
         
-        if candidate !=  u8::max_value()
+        if candidate as u8 !=  u8::max_value()
         {
             vec_b  = vec_b.iter().map(|&x|x+1).collect();
         }
     }
-    println!("After testing scores are {:?}", scores);
     scores.sort_by_key(|k| k.1); 
     //generate result list by xoring and as charing
     for a in scores.iter().take(5).map( |&x| -> String{
-        println!("Highest Scores were {}", x.0);
         let vec_b : Vec<u8> = vec![x.0;input.len()];
         encoded_string::encoded_string_from_bytes(xor_two_vecs(input, &vec_b), EncodingType::Ascii).expect("").val
     })  
