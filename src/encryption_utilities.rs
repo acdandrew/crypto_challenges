@@ -65,12 +65,11 @@ pub fn score_english_text_freq(input : &Vec<u8>) -> u32
     score 
 }
 
-pub fn xor_cipher_freq_analysis( input :& Vec<u8>) -> Vec<String>
+pub fn xor_cipher_freq_analysis( input :& Vec<u8>) -> Vec<(String,u32)>
 {
     let mut vec_b : Vec<u8> = vec![0;input.len()];
     let mut scores : Vec<(u8,u32)> = Vec::with_capacity(256);
-    let mut result : Vec<String> = Vec::with_capacity(5);
-    println!("Xor_cipher_freq_analysis {:?}", input); 
+    let mut result : Vec<(String,u32)> = Vec::with_capacity(5);
     //
     // Loop over each possible key and score it using english letter frequency
     //
@@ -87,9 +86,10 @@ pub fn xor_cipher_freq_analysis( input :& Vec<u8>) -> Vec<String>
     }
     scores.sort_by_key(|k| k.1); 
     //generate result list by xoring and as charing
-    for a in scores.iter().take(5).map( |&x| -> String{
+    for a in scores.iter().take(5).map( |&x| -> (String,u32) {
         let vec_b : Vec<u8> = vec![x.0;input.len()];
-        encoded_string::encoded_string_from_bytes(xor_two_vecs(input, &vec_b), EncodingType::Ascii).expect("").val
+        let str_part = encoded_string::encoded_string_from_bytes(xor_two_vecs(input, &vec_b), EncodingType::Ascii).expect("").val;
+        (str_part, x.1)
     })  
     {
         result.push(a);
