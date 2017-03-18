@@ -6,7 +6,7 @@ use encoded_string;
 
 static ENGLISH_FREQUENCIES : [f64;26] = [8.167,1.492,2.782,4.253,12.702,2.228,2.015,6.094,6.966,0.153,0.772,4.025,2.406,6.749,7.507,1.929,0.095,5.987,6.327,9.056,2.758,0.978,2.360,0.150,1.974,0.074];
 
-pub fn xor_two_vecs( vec_a : & Vec<u8> , vec_b : & Vec<u8> ) -> Vec<u8>
+pub fn xor_two_vecs( vec_a : &[u8]  , vec_b : &[u8]) -> Vec<u8>
 {
     let a = cmp::min(vec_a.len(), vec_b.len()); 
     let mut result : Vec<u8> = Vec::with_capacity(a);
@@ -93,6 +93,27 @@ pub fn xor_cipher_freq_analysis( input :& Vec<u8>) -> Vec<(String,u32)>
     })  
     {
         result.push(a);
+    }
+    result
+}
+
+pub fn xor_repeat_key_encrypt( plain : & Vec<u8>, key : & Vec<u8>) -> Vec<u8>
+{
+    let mut result : Vec<u8> = Vec::with_capacity(plain.len());
+    let multiple = key.len();
+    let iterations = plain.len() / key.len();
+    for i in 0..iterations
+    {
+        let mut xor = xor_two_vecs(&plain[i * multiple .. (i+1) * multiple], &key[0.. key.len()]);
+        result.append(& mut xor);
+    }
+    let modulus = plain.len() % key.len();
+    println!("Modulus is {}", modulus);
+    if modulus != 0 {
+        let last_slice = (plain.len() / key.len()) * key.len();
+        println!("last slice {:?} last key {:?}", &plain[last_slice .. last_slice + modulus], &key[0..modulus]);
+        let mut xor = xor_two_vecs(&plain[last_slice .. last_slice + modulus],&key[0.. modulus]);
+        result.append(& mut xor)
     }
     result
 }

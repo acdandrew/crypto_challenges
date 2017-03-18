@@ -11,7 +11,7 @@ use std::path::Path;
 use std::io::BufReader;
 
 fn main() { 
-    set1_challenge4();
+    set1_challenge5();
 }
 
 
@@ -57,3 +57,14 @@ fn set1_challenge4()
     }
 }
 
+fn set1_challenge5()
+{
+    let plaintext = encoded_string::EncodedString {
+        encoding : encoded_string::EncodingType::Ascii,
+        val :"Burning 'em, if you ain't quick and nimble\nI go crazy when I hear a cymbal".to_string()
+    };
+    let key = vec!['I' as u8, 'C' as u8, 'E' as u8];
+
+    let crypt = encoded_string::encoded_string_from_bytes(xor_repeat_key_encrypt(&plaintext.get_bytes().expect(""), &key), encoded_string::EncodingType::Hex);
+    println!("Repeating Key encryption is {:?}", crypt.expect("").get_val());
+}

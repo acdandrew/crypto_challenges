@@ -27,6 +27,14 @@ fn b64_char_from_six_bits(val : u8) -> char
      
 }
 
+fn b16_char_from_nibble(val : u8) -> char
+{
+    match val {
+        0...9 => (('0' as u8) + val) as char,
+        10...15 => (('a' as u8) + (val - 10)) as char,
+        _ => panic!("Invalid character in b16 char from 4 bits {:?}", val),
+    }
+}
 
 pub struct EncodedString {
 	pub encoding : EncodingType,
@@ -82,7 +90,15 @@ impl EncodedStringInterface for EncodedString {
                 panic!("Used unimplemented function {} {}", file!(), line!());
             },
             EncodingType::Ascii => {
-                panic!("Used unimplemented function {} {}", file!(), line!());
+                let mut v : Vec<u8> = Vec::with_capacity(self.val.len());
+                for c in self.val.chars()
+                {
+                    if c as u32 <= u8::max_value() as u32
+                    {
+                        v.push(c as u8);
+                    }
+                }
+                Some(v)
             },
         }
     }
@@ -142,8 +158,14 @@ pub fn encoded_string_from_bytes(input : Vec<u8>, enc: EncodingType) -> Option<E
                result.val.push(a as char);
             }
         },
+        EncodingType::Hex => {
+            for a in input {
+                result.val.push(b16_char_from_nibble((a & 0xF0) >> 4));
+                result.val.push(b16_char_from_nibble(a & 0x0F));
+            }
+        },
         _ => { panic!("unimplemented function called at {} {}", file!(), line!());
-        }
+        },
     }
 
     Some(result)
