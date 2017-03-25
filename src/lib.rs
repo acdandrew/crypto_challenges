@@ -67,4 +67,28 @@ mod tests {
 
         assert_eq!(crypt.expect("").get_val(), string_result.get_val());
     }
+
+    #[test]
+    fn test_hamming_distance() {
+        let string_a = encoded_string::EncodedString {
+            encoding : encoded_string::EncodingType::Ascii,
+            val : "this is a test".to_string()
+        };
+        let string_b = encoded_string::EncodedString {
+            encoding : encoded_string::EncodingType::Ascii,
+            val : "wokka wokka!!!".to_string()
+        };
+
+            assert_eq!(hamming_distance(&string_a.get_bytes().expect(""), &string_b.get_bytes().expect("")), 37);
+    }
+
+
+    #[test]
+    fn test_transpose_vec() {
+        let input : Vec<u8> = vec![ 1, 2, 3,4 ,5 ,6 ,7,8, 9];
+        let result : Vec<u8> = vec![1,4,7,2,5,8,3,6,9];
+
+        assert_eq!(result, transpose_vec(&input, 3));
+    }
+
 }

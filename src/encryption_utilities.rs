@@ -6,6 +6,46 @@ use encoded_string;
 
 static ENGLISH_FREQUENCIES : [f64;26] = [8.167,1.492,2.782,4.253,12.702,2.228,2.015,6.094,6.966,0.153,0.772,4.025,2.406,6.749,7.507,1.929,0.095,5.987,6.327,9.056,2.758,0.978,2.360,0.150,1.974,0.074];
 
+//TODO write map 2 vector function
+
+pub fn hamming_distance(vec_a : &[u8], vec_b : &[u8]) -> u32
+{
+   let mut result : u32 = 0;
+   let ita = vec_a.iter();
+   let mut itb = vec_b.iter();
+    
+   let comparer = ita.map(|x| {
+       match itb.next() {
+            Some(y) => bit_compare(*x,*y),
+            _ => {8},
+       }
+   });
+
+   for dif in comparer {
+       result += dif as u32;
+   }
+
+   result
+}
+
+pub fn bit_compare(x : u8, y : u8) -> u8
+{
+    let mut res : u8 = 0;
+    let mut xc = x;
+    let mut yc = y;
+
+    for _ in 0..7
+    {
+       if xc & 0x1 != yc & 0x1
+       {
+           res = res+1;
+       }
+       xc = xc >> 1;
+       yc = yc >> 1;
+    }
+    res
+}
+
 pub fn xor_two_vecs( vec_a : &[u8]  , vec_b : &[u8]) -> Vec<u8>
 {
     let a = cmp::min(vec_a.len(), vec_b.len()); 
@@ -32,6 +72,21 @@ pub fn xor_two_vecs( vec_a : &[u8]  , vec_b : &[u8]) -> Vec<u8>
     result
 }
 
+pub fn transpose_vec( vec_a : &[u8] , block_size : u32) -> Vec<u8>
+{
+    let mut result : Vec<u8> = Vec::with_capacity(vec_a.len());
+
+    let num_blocks : u32 = vec_a.len() as u32 / block_size;
+
+    for i in 0..block_size {
+        for j in 0..num_blocks
+        {
+            result.push(vec_a[((j * block_size) + i) as usize]);
+        }
+    }
+
+    result
+}
 pub fn score_english_text_freq(input : &Vec<u8>) -> u32
 {
     let mut input_freq : Vec<u32> = vec![0; 26]; 
@@ -117,3 +172,23 @@ pub fn xor_repeat_key_encrypt( plain : & Vec<u8>, key : & Vec<u8>) -> Vec<u8>
     }
     result
 }
+
+
+pub fn xor_repeat_key_break( plain : & [u8]) -> String
+{
+    let mut result = String::with_capacity(plain.len());
+    
+    let key_size_scores : Vec<(u8,u32)> = Vec::new();
+    // determine key size using normalized hamming distance
+    for key_size in 2..40 {
+       key_size_scores.push((key_size, hamming_distance(&plain[0..key_size], &plain[key_size..2*key_size])/key_size));
+    }
+
+    key_size_scores.sort_by_key(|k| k.1);
+    println!(" key size scores = {:?}", key_size_scores);
+    // transpose blocks
+
+    // solve each block as single character xor
+    result
+}
+

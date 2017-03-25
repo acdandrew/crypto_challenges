@@ -68,3 +68,21 @@ fn set1_challenge5()
     let crypt = encoded_string::encoded_string_from_bytes(xor_repeat_key_encrypt(&plaintext.get_bytes().expect(""), &key), encoded_string::EncodingType::Hex);
     println!("Repeating Key encryption is {:?}", crypt.expect("").get_val());
 }
+
+fn set1_challenge6()
+{
+     let path = Path::new("data/s1c6.txt");
+
+    let file = File::open(&path).unwrap();
+    let mut reader = BufReader::new(&file);
+
+    for line in reader.lines() {
+        match line {
+            Ok(s) => {
+            }
+            Err(_) => {}
+        }
+    }
+}
+
+
