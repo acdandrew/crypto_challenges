@@ -27,6 +27,17 @@ fn b64_char_from_six_bits(val : u8) -> char
      
 }
 
+fn byte_from_b64_char( val : char) -> u8
+{
+    match val {
+        'A'...'Z' => val as u8 - 'A' as u8,
+        'a'...'z' => val as u8 - 'a' as u8,
+        '+' => 62,
+        '/' => 63,
+        _ => 0
+    }
+}
+
 fn b16_char_from_nibble(val : u8) -> char
 {
     match val {
@@ -43,6 +54,7 @@ pub struct EncodedString {
 
 pub trait EncodedStringInterface {
     fn get_val(&self) -> & String;
+    fn append_val(& mut self, String);
     fn get_bytes(&self) -> Option<Vec<u8>>;
     fn convert_to_b64(& mut self);
 }
@@ -50,6 +62,11 @@ pub trait EncodedStringInterface {
 impl EncodedStringInterface for EncodedString {
     fn get_val(&self) -> & String {
         &self.val
+    }
+
+    fn append_val(& mut self, input : String)
+    {
+        self.val.push_str(input.as_str());
     }
 
     fn get_bytes(& self) -> Option<Vec<u8>>
@@ -84,7 +101,39 @@ impl EncodedStringInterface for EncodedString {
                 }
             },
             EncodingType::Base64 => {
-                panic!("Used unimplemented function {} {}", file!(), line!());
+                let mut v : Vec<u8> = Vec::with_capacity((self.val.len() / 2 as usize) * 3 as usize);
+                
+                let mut stage = 0;
+                let mut stored_byte : u8 = 0;
+                let mut temp : u8 = 0;
+                for ch in self.val.chars()
+                {
+                    match stage {
+                        0 => {stored_byte = byte_from_b64_char(ch) << 2; stage = 1;},
+                        1 => {
+                            temp = byte_from_b64_char(ch);
+                            stored_byte = (temp & 0b00110000) >> 4;
+                            v.push(stored_byte);
+                            stored_byte = (temp & 0b00001111) << 4;
+                            stage = 2;
+                        },
+                        2 => {
+                            temp = byte_from_b64_char(ch);
+                            stored_byte = stored_byte + ((temp & 0b00111100) >> 4);
+                            v.push(stored_byte);
+                            stored_byte = (temp & 0b00000011) << 6;
+                            stage = 3;
+                        },
+                        3 => {
+                            stored_byte = stored_byte + byte_from_b64_char(ch);
+                            v.push(stored_byte);
+                            stage = 0;
+                        },
+                        _ => {},
+                    }
+                }
+
+                Some(v)
             },
             EncodingType::Binary => {
                 panic!("Used unimplemented function {} {}", file!(), line!());
@@ -148,14 +197,14 @@ impl EncodedStringInterface for EncodedString {
     }
 }
 
-pub fn encoded_string_from_bytes(input : Vec<u8>, enc: EncodingType) -> Option<EncodedString>
+pub fn encoded_string_from_bytes(input : & [u8], enc: EncodingType) -> Option<EncodedString>
 {
     let mut result = EncodedString {  encoding : enc, val : String::with_capacity(input.len())};
 
     match enc{
         EncodingType::Ascii => {
             for a in input {
-               result.val.push(a as char);
+               result.val.push(*a as char);
             }
         },
         EncodingType::Hex => {

@@ -11,7 +11,7 @@ use std::path::Path;
 use std::io::BufReader;
 
 fn main() { 
-    set1_challenge5();
+    set1_challenge6();
 }
 
 
@@ -65,7 +65,7 @@ fn set1_challenge5()
     };
     let key = vec!['I' as u8, 'C' as u8, 'E' as u8];
 
-    let crypt = encoded_string::encoded_string_from_bytes(xor_repeat_key_encrypt(&plaintext.get_bytes().expect(""), &key), encoded_string::EncodingType::Hex);
+    let crypt = encoded_string::encoded_string_from_bytes(&xor_repeat_key_encrypt(&plaintext.get_bytes().expect(""), &key), encoded_string::EncodingType::Hex);
     println!("Repeating Key encryption is {:?}", crypt.expect("").get_val());
 }
 
@@ -76,13 +76,25 @@ fn set1_challenge6()
     let file = File::open(&path).unwrap();
     let mut reader = BufReader::new(&file);
 
+    let mut crypt = encoded_string::EncodedString {
+        encoding : encoded_string::EncodingType::Base64,
+        val : String::new()
+    };
     for line in reader.lines() {
         match line {
-            Ok(s) => {
+            Ok(mut s) => {
+                if s.ends_with("\n")
+                {
+                    s.pop();
+                }
+                crypt.append_val(s);
             }
             Err(_) => {}
         }
     }
+
+    println!("Result : {:?}",xor_repeat_key_break(&crypt.get_bytes().expect("")).expect("").get_val());
 }
+
 
 
