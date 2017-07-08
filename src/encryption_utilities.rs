@@ -92,7 +92,7 @@ pub fn score_english_text_freq(input : &Vec<u8>) -> u32
     let mut input_freq : Vec<u32> = vec![0; 26]; 
     let mut normal_freq : Vec<f64> = vec![0.0;26];
     let mut score = 0;
-    let non_english_penalty = 10;
+    let non_english_penalty = 100;
 
     for letter in input {
         match *letter as char {
@@ -110,21 +110,21 @@ pub fn score_english_text_freq(input : &Vec<u8>) -> u32
     }
 
     //
-    // attempt at MSE scoring
+    // attempt at chi squared pearson scoring
     //
     for i in 0..26 {
         normal_freq[i] = input_freq[i] as f64 / input.len() as f64;
-        score = score + (normal_freq[i] - ENGLISH_FREQUENCIES[i]).powf(2.0) as u32;
+        score = score + ((normal_freq[i] - ENGLISH_FREQUENCIES[i]).powf(2.0)/ENGLISH_FREQUENCIES[i]) as u32;
     }
     //println!("Exiting score english text with score  {:?}", score); 
     score 
 }
 
-pub fn xor_cipher_freq_analysis( input :& [u8]) -> Vec<(String,u32)>
+pub fn xor_cipher_freq_analysis( input :& [u8]) -> Vec<(String,u8)>
 {
     let mut vec_b : Vec<u8> = vec![0;input.len()];
     let mut scores : Vec<(u8,u32)> = Vec::with_capacity(256);
-    let mut result : Vec<(String,u32)> = Vec::with_capacity(5);
+    let mut result : Vec<(String,u8)> = Vec::with_capacity(5);
     //
     // Loop over each possible key and score it using english letter frequency
     //
@@ -141,12 +141,13 @@ pub fn xor_cipher_freq_analysis( input :& [u8]) -> Vec<(String,u32)>
     }
     scores.sort_by_key(|k| k.1); 
     //generate result list by xoring and as charing
-    for a in scores.iter().take(5).map( |&x| -> (String,u32) {
+    for a in scores.iter().take(5).map( |&x| -> (String,u8) {
         let vec_b : Vec<u8> = vec![x.0;input.len()];
         let str_part = encoded_string::encoded_string_from_bytes(&xor_two_vecs(&input, &vec_b), EncodingType::Ascii).expect("").val;
-        (str_part, x.0 as u32)
+        (str_part, x.0 as u8)
     })  
     {
+        //println!("{:?}\n", a.0);
         result.push(a);
     }
     result
@@ -163,10 +164,10 @@ pub fn xor_repeat_key_encrypt( plain : & [u8], key : & Vec<u8>) -> Vec<u8>
         result.append(& mut xor);
     }
     let modulus = plain.len() % key.len();
-    println!("Modulus is {}", modulus);
+    //println!("Modulus is {}", modulus);
     if modulus != 0 {
         let last_slice = (plain.len() / key.len()) * key.len();
-        println!("last slice {:?} last key {:?}", &plain[last_slice .. last_slice + modulus], &key[0..modulus]);
+        //println!("last slice {:?} last key {:?}", &plain[last_slice .. last_slice + modulus], &key[0..modulus]);
         let mut xor = xor_two_vecs(&plain[last_slice .. last_slice + modulus],&key[0.. modulus]);
         result.append(& mut xor)
     }
@@ -174,32 +175,48 @@ pub fn xor_repeat_key_encrypt( plain : & [u8], key : & Vec<u8>) -> Vec<u8>
 }
 
 
-pub fn xor_repeat_key_break( plain : & [u8] ) -> Option<EncodedString>
+pub fn xor_repeat_key_break( plain : & [u8] ) -> (Option<EncodedString>, Vec<u8>)
 {
     let mut key_vec : Vec<u8> = Vec::new(); 
     let mut key_size_scores : Vec<(u8,u32)> = Vec::new();
     // determine key size using normalized hamming distance
     for key_size in 2..40 {
-       key_size_scores.push((key_size, hamming_distance(&plain[0..2 * key_size as usize], &plain[2 *key_size as usize..(4*key_size) as usize])/(2 * key_size) as u32));
+       let mut total_edit_distance = 0;
+       //for i in 0..4 {
+            //total_edit_distance += hamming_distance(&plain[i * key_size as usize..(i + 1) * key_size as usize], &plain[(i + 1) * key_size as usize.. (i + 2) * key_size as usize]);
+       //}
+       total_edit_distance = hamming_distance(&plain[0..key_size as usize], &plain[key_size as usize.. (2 * key_size) as usize]);
+       key_size_scores.push((key_size, total_edit_distance / key_size as u32));
     }
 
     key_size_scores.sort_by_key(|k| k.1);
-    println!(" key size scores = {:?}", key_size_scores);
+    println!(" key size scores = {:?}, total length {}", key_size_scores, plain.len());
 
     // transpose blocks
-    let key_size = key_size_scores[0].0;
-    let trans = transpose_vec(plain, key_size as u32);
-
-    // solve each block as single character xor
-    let block = plain.len() as u32 / key_size as u32;
-    let key_size : u32 = key_size as u32;
-    for i in 0..key_size 
+    for p in key_size_scores.iter().take(10)
     {
-       key_vec.push(xor_cipher_freq_analysis(&trans[(i * block) as usize .. ((i + 1) * block) as usize])[0].1 as u8);
+        key_vec.clear();
+        //let key_size = key_size_scores[0].0;
+        let key_size = p.0;
+        let trans = transpose_vec(plain, key_size as u32);
+
+        // solve each block as single character xor
+        let block = plain.len() as u32 / key_size as u32;
+        let key_size : u32 = key_size as u32;
+        println!("Key candidate length {} block length {}", p.0, block);
+        for i in 0..key_size 
+        {
+           //println!("{:?} checking key number", i);
+           key_vec.push(xor_cipher_freq_analysis(&trans[(i * block) as usize .. ((i + 1) * block) as usize])[0].1 as u8);
+        }
+
+        // apply key
+        println!("\n Key size {} {:?}\n",p.0,encoded_string_from_bytes(&xor_repeat_key_encrypt(plain, &key_vec), EncodingType::Ascii).expect("").get_val());
+
+        // score resulting plain text and keep results
     }
-    println!("key values {:?}", key_vec);
-
-    // apply key
-    encoded_string_from_bytes(&xor_repeat_key_encrypt(plain, &key_vec), EncodingType::Ascii)
+    
+    // return best scoring plain text and key
+   //Some(encoded_string_from_bytes(&xor_repeat_key_encrypt(plain, &key_vec), EncodingType::Ascii).expect(""))
+   None
 }
-

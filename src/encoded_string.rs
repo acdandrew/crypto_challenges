@@ -31,10 +31,12 @@ fn byte_from_b64_char( val : char) -> u8
 {
     match val {
         'A'...'Z' => val as u8 - 'A' as u8,
-        'a'...'z' => val as u8 - 'a' as u8,
+        'a'...'z' => val as u8 - 'a' as u8 + 26,
+        '0'...'9' => val as u8 - '0' as u8 + 52,
         '+' => 62,
         '/' => 63,
-        _ => 0
+        '=' => 0,
+        _ => panic!("Invalid character in byte from b64 char {}", val) 
     }
 }
 
@@ -112,14 +114,14 @@ impl EncodedStringInterface for EncodedString {
                         0 => {stored_byte = byte_from_b64_char(ch) << 2; stage = 1;},
                         1 => {
                             temp = byte_from_b64_char(ch);
-                            stored_byte = (temp & 0b00110000) >> 4;
+                            stored_byte = stored_byte + ((temp & 0b00110000) >> 4);
                             v.push(stored_byte);
                             stored_byte = (temp & 0b00001111) << 4;
                             stage = 2;
                         },
                         2 => {
                             temp = byte_from_b64_char(ch);
-                            stored_byte = stored_byte + ((temp & 0b00111100) >> 4);
+                            stored_byte = stored_byte + ((temp & 0b00111100) >> 2);
                             v.push(stored_byte);
                             stored_byte = (temp & 0b00000011) << 6;
                             stage = 3;

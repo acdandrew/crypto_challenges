@@ -11,6 +11,7 @@ use std::path::Path;
 use std::io::BufReader;
 
 fn main() { 
+    //set1_challenge4();
     set1_challenge6();
 }
 
@@ -35,7 +36,7 @@ fn set1_challenge4()
 
     let file = File::open(&path).unwrap();
     let mut reader = BufReader::new(&file);
-    let mut best_matches : Vec<(String,u32)> = Vec::with_capacity(60);
+    let mut best_matches : Vec<(String,u8)> = Vec::with_capacity(60);
 
     for line in reader.lines() {
         match line {
@@ -52,7 +53,7 @@ fn set1_challenge4()
 
     best_matches.sort_by_key(|k| k.1);
     //print top one
-    for res in best_matches.iter().take(5) {
+    for res in best_matches.iter().take(60) {
         println!("{} {}", res.0, res.1);
     }
 }
@@ -92,7 +93,7 @@ fn set1_challenge6()
             Err(_) => {}
         }
     }
-
+    //println!("Trimmed b64 string {:?}", crypt.get_val());
     println!("Result : {:?}",xor_repeat_key_break(&crypt.get_bytes().expect("")).expect("").get_val());
 }
 
