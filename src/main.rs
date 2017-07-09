@@ -13,6 +13,7 @@ use std::io::BufReader;
 fn main() { 
     //set1_challenge4();
     set1_challenge6();
+    //set1_challenge6_test();
 }
 
 
@@ -84,18 +85,43 @@ fn set1_challenge6()
     for line in reader.lines() {
         match line {
             Ok(mut s) => {
-                if s.ends_with("\n")
-                {
-                    s.pop();
-                }
                 crypt.append_val(s);
             }
             Err(_) => {}
         }
     }
-    //println!("Trimmed b64 string {:?}", crypt.get_val());
-    println!("Result : {:?}",xor_repeat_key_break(&crypt.get_bytes().expect("")).expect("").get_val());
+    let (plain,key) = xor_repeat_key_break(&crypt.get_bytes().expect(""));
+    println!("Result : {:?}", plain.get_val());
+    println!("key: {:?}", key);
+
 }
+fn set1_challenge6_test()
+{
+    let path = Path::new("data/first_five_woodlanders.txt");
 
+    let file = File::open(&path).unwrap();
+    let mut reader = BufReader::new(&file);
 
+    let mut plain = encoded_string::EncodedString {
+        encoding : encoded_string::EncodingType::Ascii,
+        val : String::new()
+    };
+    for line in reader.lines() {
+        match line {
+            Ok(mut s) => {
+                plain.append_val(s);
+            }
+            Err(_) => {}
+        }
+    }
+    // generate random key
+    
+    let key_vec : Vec<u8> = vec![0xc7, 0xfa, 0x3b];
+    // encrypt the plain text
+    let crypt = xor_repeat_key_encrypt(&plain.get_bytes().expect(""), &key_vec);
+
+    // assert that analysis finds the right key
+    assert_eq!(key_vec, xor_repeat_key_break(&crypt).1);
+    println!("string {:?}", xor_repeat_key_break(&crypt).0.get_val());
+}
 

@@ -189,7 +189,7 @@ mod tests {
         let crypt = xor_repeat_key_encrypt(&plain.get_bytes().expect(""), &key_vec);
 
         // assert that analysis finds the right key
-        assert_eq!(key, xor_repeat_key_break(&crypt)[0].1);
-
+        assert_eq!(key_vec, xor_repeat_key_break(&crypt).1);
+    }
 
 }

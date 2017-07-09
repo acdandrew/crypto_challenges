@@ -175,27 +175,28 @@ pub fn xor_repeat_key_encrypt( plain : & [u8], key : & Vec<u8>) -> Vec<u8>
 }
 
 
-pub fn xor_repeat_key_break( plain : & [u8] ) -> (Option<EncodedString>, Vec<u8>)
+pub fn xor_repeat_key_break( plain : & [u8] ) -> (EncodedString, Vec<u8>)
 {
-    let mut key_vec : Vec<u8> = Vec::new(); 
-    let mut key_size_scores : Vec<(u8,u32)> = Vec::new();
+    let mut key_size_scores : Vec<(u8,f32)> = Vec::new();
+    let mut result_scores : Vec<(Vec<u8>,u32)> = Vec::new();
     // determine key size using normalized hamming distance
     for key_size in 2..40 {
-       let mut total_edit_distance = 0;
+       let mut total_edit_distance : u32 = 0;
        //for i in 0..4 {
             //total_edit_distance += hamming_distance(&plain[i * key_size as usize..(i + 1) * key_size as usize], &plain[(i + 1) * key_size as usize.. (i + 2) * key_size as usize]);
        //}
-       total_edit_distance = hamming_distance(&plain[0..key_size as usize], &plain[key_size as usize.. (2 * key_size) as usize]);
-       key_size_scores.push((key_size, total_edit_distance / key_size as u32));
+       let explicit_type : u32 = key_size;
+       total_edit_distance  = hamming_distance(&plain[0..(4 * key_size) as usize], &plain[((4 *key_size) as usize)..((8 * key_size) as usize)]);
+       key_size_scores.push((key_size as u8, (total_edit_distance as f32) / (key_size as f32)));
     }
 
-    key_size_scores.sort_by_key(|k| k.1);
+    key_size_scores.sort_by(|a,b| a.1.partial_cmp(&b.1).unwrap());
     println!(" key size scores = {:?}, total length {}", key_size_scores, plain.len());
 
     // transpose blocks
-    for p in key_size_scores.iter().take(10)
+    for p in key_size_scores.iter().take(4)
     {
-        key_vec.clear();
+        let mut key_vec : Vec<u8> = Vec::new(); 
         //let key_size = key_size_scores[0].0;
         let key_size = p.0;
         let trans = transpose_vec(plain, key_size as u32);
@@ -211,12 +212,17 @@ pub fn xor_repeat_key_break( plain : & [u8] ) -> (Option<EncodedString>, Vec<u8>
         }
 
         // apply key
-        println!("\n Key size {} {:?}\n",p.0,encoded_string_from_bytes(&xor_repeat_key_encrypt(plain, &key_vec), EncodingType::Ascii).expect("").get_val());
+        let candidate = encoded_string_from_bytes(&xor_repeat_key_encrypt(plain, &key_vec),
+                                                  EncodingType::Ascii).expect("");
+        let score = score_english_text_freq(&candidate.get_bytes().expect(""));
+        result_scores.push((key_vec,score));
+        //println!("\n Key size {} {:?}\n",p.0,encoded_string_from_bytes(&xor_repeat_key_encrypt(plain, &key_vec), EncodingType::Ascii).expect("").get_val());
 
         // score resulting plain text and keep results
     }
     
+    result_scores.sort_by_key(|k| k.1);
+
     // return best scoring plain text and key
-   //Some(encoded_string_from_bytes(&xor_repeat_key_encrypt(plain, &key_vec), EncodingType::Ascii).expect(""))
-   None
+    (encoded_string_from_bytes(&xor_repeat_key_encrypt(plain, &result_scores[0].0), EncodingType::Ascii).expect(""), result_scores[0].0.clone())
 }
