@@ -5,3 +5,4 @@ authors = ["andrewalves"]
 
 [dependencies]
 rand = "*"
+openssl = "*"

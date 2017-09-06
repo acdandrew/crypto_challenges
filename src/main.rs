@@ -1,19 +1,19 @@
 #![allow(dead_code)]
 extern crate crypto_pals;
+extern crate openssl;
 use crypto_pals::encoded_string;
 use crypto_pals::encoded_string::*;
 use crypto_pals::encryption_utilities::*;
 
-use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::io::BufReader;
+use openssl::symm;
+
 
 fn main() { 
-    //set1_challenge4();
-    set1_challenge6();
-    //set1_challenge6_test();
+    set1_challenge8();
 }
 
 
@@ -36,7 +36,7 @@ fn set1_challenge4()
     let path = Path::new("data/s1c4.txt");
 
     let file = File::open(&path).unwrap();
-    let mut reader = BufReader::new(&file);
+    let reader = BufReader::new(&file);
     let mut best_matches : Vec<(String,u8)> = Vec::with_capacity(60);
 
     for line in reader.lines() {
@@ -76,7 +76,7 @@ fn set1_challenge6()
      let path = Path::new("data/s1c6.txt");
 
     let file = File::open(&path).unwrap();
-    let mut reader = BufReader::new(&file);
+    let reader = BufReader::new(&file);
 
     let mut crypt = encoded_string::EncodedString {
         encoding : encoded_string::EncodingType::Base64,
@@ -84,7 +84,7 @@ fn set1_challenge6()
     };
     for line in reader.lines() {
         match line {
-            Ok(mut s) => {
+            Ok(s) => {
                 crypt.append_val(s);
             }
             Err(_) => {}
@@ -95,33 +95,64 @@ fn set1_challenge6()
     println!("key: {:?}", key);
 
 }
-fn set1_challenge6_test()
+
+fn set1_challenge7()
 {
-    let path = Path::new("data/first_five_woodlanders.txt");
-
+    let path = Path::new("data/s1c7.txt");
     let file = File::open(&path).unwrap();
-    let mut reader = BufReader::new(&file);
 
-    let mut plain = encoded_string::EncodedString {
-        encoding : encoded_string::EncodingType::Ascii,
+    let reader = BufReader::new(&file);
+
+    let mut crypt = encoded_string::EncodedString {
+        encoding : encoded_string::EncodingType::Base64,
         val : String::new()
     };
     for line in reader.lines() {
         match line {
-            Ok(mut s) => {
-                plain.append_val(s);
+            Ok(s) => {
+                crypt.append_val(s);
             }
             Err(_) => {}
         }
     }
-    // generate random key
-    
-    let key_vec : Vec<u8> = vec![0xc7, 0xfa, 0x3b];
-    // encrypt the plain text
-    let crypt = xor_repeat_key_encrypt(&plain.get_bytes().expect(""), &key_vec);
+   
+    let key = encoded_string::EncodedString {
+        encoding : encoded_string::EncodingType::Ascii,
+        val : "YELLOW SUBMARINE".to_string()
+    };
+    let r = symm::decrypt(symm::Cipher::aes_128_ecb(), &key.get_bytes().expect(""), None,
+                          &crypt.get_bytes().expect(""));
+    match r {
+        Ok(v) => {println!("{:?}", encoded_string::encoded_string_from_bytes(&v, encoded_string::EncodingType::Ascii).expect("").get_val());},
+        Err(e) => {println!("{:?}", e);}
+    }
+    //println!("{:?}", symm::decrypt(symm::Cipher::aes_128_ecb(), &key.get_bytes().expect(""), None,
+    //                               &crypt.get_bytes().expect("")).unwrap());
+}
 
-    // assert that analysis finds the right key
-    assert_eq!(key_vec, xor_repeat_key_break(&crypt).1);
-    println!("string {:?}", xor_repeat_key_break(&crypt).0.get_val());
+fn set1_challenge8()
+{
+    let path = Path::new("data/s1c8.txt");
+    let file = File::open(&path).unwrap();
+    let mut crypts : Vec<Vec<u8>> = Vec::new();
+
+    let reader = BufReader::new(&file);
+
+    // read in our crypto texts
+    for line in reader.lines() {
+        match line {
+            Ok(s) => {
+                let mut crypt = encoded_string::EncodedString {
+                    encoding : encoded_string::EncodingType::Hex,
+                    val : String::new()
+                };
+                crypt.append_val(s);
+                crypts.push(crypt.get_bytes().expect(""));
+            }
+            Err(_) => {}
+        }
+    }
+
+    println!("Challenge 8 dups and block {:?}\n", detect_ecb_aes( &crypts));
 }
 

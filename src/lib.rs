@@ -192,4 +192,12 @@ mod tests {
         assert_eq!(key_vec, xor_repeat_key_break(&crypt).1);
     }
 
+    #[test]
+    fn test_detect_duplicates() {
+        let a : Vec<u8> = vec![1,2,3,4,5,6,7,8,3,3,3,3,1,2,3,4,7,8,9,0,3,3,3,3];
+
+        // assert that we get four matches for t with blocksize of 4
+        // the abcd blocks match each other and the beef blocks do
+        assert_eq!(4, detect_duplicates(&a, 4));
+    }
 }

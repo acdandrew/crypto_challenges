@@ -226,3 +226,46 @@ pub fn xor_repeat_key_break( plain : & [u8] ) -> (EncodedString, Vec<u8>)
     // return best scoring plain text and key
     (encoded_string_from_bytes(&xor_repeat_key_encrypt(plain, &result_scores[0].0), EncodingType::Ascii).expect(""), result_scores[0].0.clone())
 }
+
+pub fn detect_duplicates(buf : &[u8] ,block_size : u32) -> (u32)
+{
+    let mut result = 0;
+    // if we are properly divisible by block size
+    if buf.len() as u32 % block_size == 0 {
+        // for each block
+        let block_num : u32 = (buf.len() / block_size as usize) as u32;
+        for i in 0..block_num {
+            // for each other block
+            for j in 0..block_num {
+                //if two slices are equal (and not the same index) inc result
+                if i != j && 
+                    buf[(i * block_size) as usize .. ((i + 1) * block_size) as usize] ==
+                    buf[(j * block_size) as usize .. ((j + 1) * block_size) as usize] {
+                        result = result + 1;
+                }
+            }
+        }
+    }
+    else {
+        println!("Did not check since mod is {}\n", buf.len() as u32 % block_size);
+    }
+    result
+}
+
+pub fn detect_ecb_aes( crypts :& [Vec<u8>] ) -> (String, u32)
+{
+    // map each Vec<u8> -> Vec<int> where int is number of duplicate blocks
+    let mut counts : Vec<(Vec<u8>, u32)> = 
+                crypts.iter().map(|x| -> (Vec<u8>, u32) {
+                    (x.clone(), detect_duplicates(&x, 16))
+                }).collect(); 
+
+    counts.sort_by_key(|k| -1 as i32 * k.1 as i32);
+
+    for a in counts.iter().take(5) {
+        println!("Highest counts are {:?}\n", a.1);
+    }
+    let result = encoded_string::encoded_string_from_bytes(&counts[0].0, EncodingType::Hex).expect("").get_val().clone();
+    let count = counts[0].1;
+    (result, count)
+}
