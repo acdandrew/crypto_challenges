@@ -1,5 +1,9 @@
 pub mod encoded_string;
 pub mod encryption_utilities;
+pub mod crypt_util;
+pub mod crypt_algo;
+pub mod crypt_break;
+
 extern crate rand;
 
 #[cfg(test)]
@@ -9,6 +13,9 @@ mod tests {
     use encoded_string;
     use encoded_string::*;
     use encryption_utilities::*;
+    use crypt_util::*;
+    use crypt_algo::*;
+    use crypt_break::*;
     use std::error::Error;
     use std::fs::File;
     use std::io::prelude::*;
@@ -199,5 +206,22 @@ mod tests {
         // assert that we get four matches for t with blocksize of 4
         // the abcd blocks match each other and the beef blocks do
         assert_eq!(4, detect_duplicates(&a, 4));
+    }
+
+    #[test]
+    fn test_pkcs_7_padding() {
+        let mut plain = encoded_string::EncodedString {
+            encoding : encoded_string::EncodingType::Ascii,
+            val : "YELLOW SUBMARINE".to_string() 
+        };
+
+        let mut unpadded_bytes = plain.get_bytes().expect("");
+        let mut padded_bytes = plain.get_bytes().expect("");
+        padded_bytes.push(0x04);
+        padded_bytes.push(0x04);
+        padded_bytes.push(0x04);
+        padded_bytes.push(0x04);
+        pkcs_7(& mut unpadded_bytes, 20); 
+        assert_eq!(unpadded_bytes, padded_bytes);
     }
 }

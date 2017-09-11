@@ -4,6 +4,9 @@ extern crate openssl;
 use crypto_pals::encoded_string;
 use crypto_pals::encoded_string::*;
 use crypto_pals::encryption_utilities::*;
+use crypto_pals::crypt_util::*;
+use crypto_pals::crypt_algo::*;
+use crypto_pals::crypt_break::*;
 
 use std::fs::File;
 use std::io::prelude::*;

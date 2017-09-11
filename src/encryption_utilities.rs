@@ -262,9 +262,6 @@ pub fn detect_ecb_aes( crypts :& [Vec<u8>] ) -> (String, u32)
 
     counts.sort_by_key(|k| -1 as i32 * k.1 as i32);
 
-    for a in counts.iter().take(5) {
-        println!("Highest counts are {:?}\n", a.1);
-    }
     let result = encoded_string::encoded_string_from_bytes(&counts[0].0, EncodingType::Hex).expect("").get_val().clone();
     let count = counts[0].1;
     (result, count)
