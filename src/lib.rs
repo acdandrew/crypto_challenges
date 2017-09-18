@@ -5,6 +5,7 @@ pub mod crypt_algo;
 pub mod crypt_break;
 
 extern crate rand;
+extern crate openssl;
 
 #[cfg(test)]
 mod tests {
@@ -23,6 +24,8 @@ mod tests {
     use std::io::BufReader;
     use rand;
     use rand::Rng;
+    use openssl::symm;
+    use openssl;
 
     #[test]
     fn test_hex_to_b64() {
@@ -224,4 +227,65 @@ mod tests {
         pkcs_7(& mut unpadded_bytes, 20); 
         assert_eq!(unpadded_bytes, padded_bytes);
     }
+
+    #[test]
+    fn test_cbc_mode() {
+        let mut key = encoded_string::EncodedString {
+            encoding : encoded_string::EncodingType::Ascii,
+            val : "YELLOW SUBMARINE".to_string() 
+        };
+
+        let mut plain = encoded_string::EncodedString {
+            encoding: encoded_string::EncodingType::Ascii,
+            val : "Hello Andrew FrdHello Andrew Frd".to_string()
+        };
+
+        openssl::init();
+        println!("Starting plain text {:?}\n key : {:?}\n", plain.get_bytes().expect(""),
+        key.get_bytes().expect(""));
+
+        //create a closure from symm::encrypt and symm::decrypt
+        let decr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+            let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+            let mut d = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Decrypt, 
+                                             k, None).expect("");
+            d.pad(false);
+            println!("Before Decrypt\n");
+            temp.resize(a.len() * 2, 0);
+            let count = d.update(a, &mut temp).expect("");
+            temp.resize(count,0); 
+            println!("After Decrypt\n");
+            temp
+        };
+        
+        let encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+            let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+            let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
+                                             k,None).expect("");
+
+            println!("Encrypting plain text {:?}\n key : {:?}\n", a,k);
+            e.pad(false);
+            temp.resize(a.len() * 2, 0);
+            let count = e.update(a, &mut temp).expect("");
+            temp.resize(count, 0);
+            println!("After Encrypt\n");
+            temp
+        };
+
+        let mut iv : Vec<u8> = Vec::with_capacity(16);
+        iv.resize(16,0);
+        //create a CBC_Mode structure using those two closures and an IV of all ascii 0s blocksize of
+        //16
+        let mut cbc = CBC_Mode::new(encr , decr, 16, &iv);
+        let cbc_crypt = cbc.encrypt(&plain.get_bytes().expect(""), &key.get_bytes().expect(""));
+        //assert_eq!(cbc_crypt.expect(""), cout);
+
+        let plain2 = cbc.decrypt(&cbc_crypt.expect(""), &key.get_bytes().expect(""));
+        assert_eq!(plain2.expect(""),plain.get_bytes().expect("")); 
+        
+        //TODO test single block symm::encrypt -> sym::decrypt without my cbc mode ( This works)
+        //auto padding?:
+    }
+
+
 }

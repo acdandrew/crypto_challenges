@@ -16,7 +16,7 @@ use openssl::symm;
 
 
 fn main() { 
-    set1_challenge8();
+    set2_challenge10();
 }
 
 
@@ -159,3 +159,53 @@ fn set1_challenge8()
     println!("Challenge 8 dups and block {:?}\n", detect_ecb_aes( &crypts));
 }
 
+fn set2_challenge10()
+{
+    let crypt = encoded_string::encoded_string_from_file("data/s2c10.txt", encoded_string::EncodingType::Base64).unwrap(); 
+
+    let mut plain = encoded_string::EncodedString {
+        encoding : encoded_string::EncodingType::Ascii,
+        val : "YELLOW SUBMARINE".to_string() 
+    };
+    //create a closure from symm::encrypt and symm::decrypt
+    //FIXME These are comically inefficient because of this wierd assert that the library requires
+    // that the output vec for the update function be twice the size of its input.  Presumably this
+    // is for some mode of encryption that I'm not familiar with.  Rather than having my CBC
+    // function handle that weirdness I'd rather just have this copy heavy closure
+    let decr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+        let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+        let mut d = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Decrypt, 
+                                         k, None).expect("");
+        d.pad(false);
+        println!("Before Decrypt\n");
+        temp.resize(a.len() * 2, 0);
+        let count = d.update(a, &mut temp).expect("");
+        temp.resize(count,0); 
+        println!("After Decrypt\n");
+        temp
+    };
+    
+    let encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+        let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+        let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
+                                         k,None).expect("");
+
+        println!("Encrypting plain text {:?}\n key : {:?}\n", a,k);
+        e.pad(false);
+        temp.resize(a.len() * 2, 0);
+        let count = e.update(a, &mut temp).expect("");
+        temp.resize(count, 0);
+        println!("After Encrypt\n");
+        temp
+    };
+
+    let mut iv : Vec<u8> = Vec::with_capacity(16);
+    iv.resize(16,0);
+    //create a CBC_Mode structure using those two closures and an IV of all ascii 0s blocksize of
+    //16
+    let mut cbc = CBC_Mode::new(encr , decr, 16, &iv);
+
+    //call decrypt method
+    let res = encoded_string::encoded_string_from_bytes(&cbc.decrypt(&crypt.get_bytes().expect(""), &plain.get_bytes().expect("")).expect(""), EncodingType::Ascii).expect("");
+    println!("Challenge 10 {:?}\n", res.get_val());
+}

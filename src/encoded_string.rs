@@ -1,4 +1,8 @@
 use std::vec::Vec;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+use std::io::BufReader;
 
 #[derive(Clone, Copy)]
 pub enum EncodingType {
@@ -220,4 +224,30 @@ pub fn encoded_string_from_bytes(input : & [u8], enc: EncodingType) -> Option<En
     }
 
     Some(result)
+}
+
+pub fn encoded_string_from_file(filename : &str, enc : EncodingType) -> Option<EncodedString>
+{
+   let path = Path::new(filename);
+
+   match File::open(&path) {
+       Ok(file) => {
+        let reader = BufReader::new(&file);
+
+        let mut crypt = EncodedString {
+            encoding : enc, 
+            val : String::new()
+        };
+        for line in reader.lines() {
+            match line {
+                Ok(s) => {
+                    crypt.append_val(s);
+                }
+                Err(_) => {}
+            }
+        }
+        return Some(crypt)
+       }
+       Err(_) => return None
+   }
 }
