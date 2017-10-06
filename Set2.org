@@ -1,0 +1,16 @@
+* Set 2 Challenge 11 [1/2]
+- [X] Write a function to generate a random AES key (16 bytes) 
+- [-] Write a function that encrypts data under an unknown key (aka random key) [2/3]
+  - [X] - Add before (5-10 random bytes) and after (5-10 random bytes) to the plaintext.  count chosen randomly
+  - [X] - Choose ECB half the time and CBC the other half with random ivs (use rand(2) to decide)
+  - [ ] - Ensure that there is a function that can detect if ecb or cbc is being used 
+    - Does our ecb vs cbc function from before still work when random bytes being shifted?
+    - I CAN CRAFT THE PLAINTEXT (TWO blocks repeated 16 times accounts for all rotations)
+    - Write loop that runs a statistically significant amount of times to test my function
+
+      
+* Set 2 Challenge 12 [0/0]
+   
+
+  
+   

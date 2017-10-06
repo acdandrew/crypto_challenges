@@ -16,7 +16,7 @@ use openssl::symm;
 
 
 fn main() { 
-    set2_challenge10();
+    set2_challenge11();
 }
 
 
@@ -208,4 +208,38 @@ fn set2_challenge10()
     //call decrypt method
     let res = encoded_string::encoded_string_from_bytes(&cbc.decrypt(&crypt.get_bytes().expect(""), &plain.get_bytes().expect("")).expect(""), EncodingType::Ascii).expect("");
     println!("Challenge 10 {:?}\n", res.get_val());
+}
+
+fn set2_challenge11()
+{
+        let num_test = 1;
+        let block_size = 16;
+        let mut num_bad = 0;
+        for i in 0..num_test {
+            let mut was_ecb = BlockMode::ECB;
+
+            let encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+                let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+                let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
+                                                 k,None).expect("");
+
+                e.pad(false);
+                temp.resize(a.len() * 2, 0);
+                let count = e.update(a, &mut temp).expect("");
+                temp.resize(count, 0);
+                temp
+            };
+
+            let mod_encr = | a : &[u8]| -> Vec<u8> {
+                let (crypt,was_ecb) = oracle_function(a, block_size as usize, encr);
+                crypt
+            };
+
+            if (detect_block_mode(mod_encr, block_size) != was_ecb)
+            {
+                num_bad = num_bad + 1;
+            }
+        }
+
+        assert_eq!(num_bad, 0);
 }

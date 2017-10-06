@@ -282,10 +282,55 @@ mod tests {
 
         let plain2 = cbc.decrypt(&cbc_crypt.expect(""), &key.get_bytes().expect(""));
         assert_eq!(plain2.expect(""),plain.get_bytes().expect("")); 
-        
-        //TODO test single block symm::encrypt -> sym::decrypt without my cbc mode ( This works)
-        //auto padding?:
     }
+
+    #[test]
+    fn test_create_random_key()
+    {
+        let key_size : usize = 32;
+
+        assert_ne!(create_random_key(key_size), create_random_key(key_size));
+        assert_eq!(key_size, create_random_key(key_size).len());
+    }
+
+    #[test]
+    fn test_detect_block_mode()
+    {
+        let num_test = 1;
+        let block_size = 16;
+        let mut num_bad = 0;
+        for i in 0..num_test {
+            let mut was_ecb = BlockMode::ECB;
+
+            let encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+                let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+                let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
+                                                 k,None).expect("");
+
+                println!("Encrypting plain text {:?}\n key : {:?}\n", a,k);
+                e.pad(false);
+                temp.resize(a.len() * 2, 0);
+                let count = e.update(a, &mut temp).expect("");
+                temp.resize(count, 0);
+                println!("After Encrypt\n");
+                temp
+            };
+
+            let mod_encr = | a : &[u8]| -> Vec<u8> {
+                let (crypt,was_ecb) = oracle_function(a, block_size as usize, encr);
+                crypt
+            };
+
+            if (detect_block_mode(mod_encr, block_size) != was_ecb)
+            {
+                num_bad = num_bad + 1;
+            }
+        }
+
+        assert_eq!(num_bad, 0);
+    }
+
+    
 
 
 }
