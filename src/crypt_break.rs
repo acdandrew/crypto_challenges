@@ -3,7 +3,7 @@ use crypt_algo::*;
 
 
 
-pub fn detect_block_mode<T>(mut cipher : T, block_size : u32) -> BlockMode
+pub fn detect_block_mode<T>(cipher : T, block_size : u32) -> BlockMode
     where T : FnOnce(& [u8]) -> Vec<u8>
 {
     // create chosen plain text.

@@ -129,6 +129,7 @@ pub fn xor_cipher_freq_analysis( input :& [u8]) -> Vec<(String,u8)>
     // Loop over each possible key and score it using english letter frequency
     //
     for candidate in 0..256 {
+        #[allow(unused_variables)]
         let explicit_type : u32 = candidate; // this is because rust compiler infers candidate as u8
                                              // and does some weird undefined behavior
         let decrypted = xor_two_vecs(input,  &vec_b);
@@ -181,10 +182,9 @@ pub fn xor_repeat_key_break( plain : & [u8] ) -> (EncodedString, Vec<u8>)
     let mut result_scores : Vec<(Vec<u8>,u32)> = Vec::new();
     // determine key size using normalized hamming distance
     for key_size in 2..40 {
-       let mut total_edit_distance : u32 = 0;
-       //for i in 0..4 {
-            //total_edit_distance += hamming_distance(&plain[i * key_size as usize..(i + 1) * key_size as usize], &plain[(i + 1) * key_size as usize.. (i + 2) * key_size as usize]);
-       //}
+       let mut total_edit_distance : u32;
+
+       #[allow(unused_variables)]
        let explicit_type : u32 = key_size;
        total_edit_distance  = hamming_distance(&plain[0..(4 * key_size) as usize], &plain[((4 *key_size) as usize)..((8 * key_size) as usize)]);
        key_size_scores.push((key_size as u8, (total_edit_distance as f32) / (key_size as f32)));

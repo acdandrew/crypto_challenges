@@ -7,6 +7,7 @@ pub fn pkcs_7(to_modify : &mut Vec<u8>, block_size : u32) {
     let modulus = to_modify.len() as u32 % block_size;
     let bytes_left = block_size - modulus;
 
+   #[allow(unused_variables)]
     for i in 0..bytes_left{
         to_modify.push(bytes_left as u8);
     }

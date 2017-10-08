@@ -10,6 +10,7 @@ use rand::Rng;
 pub enum BlockMode {
     ECB, // Electronic Code Book
     CBC, // Cipher Block Chaining
+    INVALID,
 }
 
 /// Struct for CBC mode of an algorithm
@@ -166,7 +167,7 @@ pub fn oracle_function<T>(plain : &[u8], block_size : usize,mut f : T) -> (Vec<u
     let mut aug_plain : Vec<u8> = Vec::with_capacity(pre_size + post_size + plain.len());
     aug_plain.resize(pre_size + post_size + plain.len(), 0);
 
-    //TODO padding on augmented plain text
+    pkcs_7(&mut aug_plain, block_size as u32);
 
     // fill in pre bytes
     r.fill_bytes(&mut aug_plain[0..pre_size]);
@@ -179,6 +180,7 @@ pub fn oracle_function<T>(plain : &[u8], block_size : usize,mut f : T) -> (Vec<u
 
     let coin = r.next_u32() % 2;
     let mut result : Vec<u8> = Vec::new(); 
+   #[allow(unused_variables)]
     let blank = | a : &[u8], k : &[u8]| -> Vec<u8> { Vec::new() };
     let mut mode = BlockMode::ECB;
     if coin == 1
@@ -186,7 +188,7 @@ pub fn oracle_function<T>(plain : &[u8], block_size : usize,mut f : T) -> (Vec<u
         println!("Oracle Function about to Encrypt CBC {:?}, {:?}\n", aug_plain.len(), &key);
         // if true do cbc mode
         let iv = create_random_key(block_size);
-        let mut cbc  = CBC_Mode::new(blank, f, 16, &iv);
+        let mut cbc  = CBC_Mode::new(f,blank, 16, &iv);
 
         result = cbc.encrypt(&aug_plain, &key).expect("");
         mode = BlockMode::CBC
@@ -194,14 +196,15 @@ pub fn oracle_function<T>(plain : &[u8], block_size : usize,mut f : T) -> (Vec<u
     else
     {
         println!("Oracle Function about to Encrypt ECB {:?}, {:?}\n", aug_plain.len(), &key);
+        result.resize(aug_plain.len(), 0);
         // do ecb mode
-        let num_blocks = plain.len() / block_size;
+        let num_blocks = aug_plain.len() / block_size;
         for i in 0..num_blocks {
             let beg : usize = (block_size * i) as usize;
             let end : usize = (block_size * (i + 1)) as usize;
-            result[beg..end].copy_from_slice(&f(&aug_plain[beg..end], &key));
+            let enc_block = f(&aug_plain[beg..end], &key);
+            result[beg..end].copy_from_slice(&enc_block[..]);
         }
     }
-
     (result, mode)
 }

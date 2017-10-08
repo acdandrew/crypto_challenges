@@ -163,7 +163,7 @@ fn set2_challenge10()
 {
     let crypt = encoded_string::encoded_string_from_file("data/s2c10.txt", encoded_string::EncodingType::Base64).unwrap(); 
 
-    let mut plain = encoded_string::EncodedString {
+    let plain = encoded_string::EncodedString {
         encoding : encoded_string::EncodingType::Ascii,
         val : "YELLOW SUBMARINE".to_string() 
     };
@@ -215,27 +215,41 @@ fn set2_challenge11()
         let num_test = 1;
         let block_size = 16;
         let mut num_bad = 0;
+        #[allow(unused_variables)]
         for i in 0..num_test {
-            let mut was_ecb = BlockMode::ECB;
+            let mut was_ecb = BlockMode::INVALID;
+            let mode : BlockMode;
 
-            let encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
-                let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
-                let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
-                                                 k,None).expect("");
+            // create enclosing scope so that closure can expire
+            // after its used in detect_block_mode thereby releasing mut borrow of was_ecb
+            // The two closures here are 
+            // - encr - encrypts using aes_128_ecb
+            // - mod_encr - uses the oracle function to encrypt (chooses ECB half the time and CBC
+            //              half.  mod_encr passes out which mode was used into was_ecb
+            {
+                let encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+                    let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+                    let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
+                                                     k,None).expect("");
 
-                e.pad(false);
-                temp.resize(a.len() * 2, 0);
-                let count = e.update(a, &mut temp).expect("");
-                temp.resize(count, 0);
-                temp
-            };
+                    println!("Encrypting plain text {:?}\n key : {:?}\n", a,k);
+                    e.pad(false);
+                    temp.resize(a.len() * 2, 0);
+                    let count = e.update(a, &mut temp).expect("");
+                    temp.resize(count, 0);
+                    println!("After Encrypt\n");
+                    temp
+                };
 
-            let mod_encr = | a : &[u8]| -> Vec<u8> {
-                let (crypt,was_ecb) = oracle_function(a, block_size as usize, encr);
-                crypt
-            };
+                let mod_encr = | a : &[u8]| -> Vec<u8> {
+                    let result = oracle_function(a, block_size as usize, encr);
+                    was_ecb = result.1;
+                    result.0
+                };
 
-            if (detect_block_mode(mod_encr, block_size) != was_ecb)
+                mode = detect_block_mode(mod_encr, block_size);
+            }
+            if  mode != was_ecb
             {
                 num_bad = num_bad + 1;
             }

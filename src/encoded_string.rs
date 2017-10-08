@@ -111,7 +111,7 @@ impl EncodedStringInterface for EncodedString {
                 
                 let mut stage = 0;
                 let mut stored_byte : u8 = 0;
-                let mut temp : u8 = 0;
+                let mut temp : u8;
                 for ch in self.val.chars()
                 {
                     match stage {
@@ -168,7 +168,7 @@ impl EncodedStringInterface for EncodedString {
                 let raw_data = self.get_bytes().unwrap(); //can't this fail?
                 let mut new_str = String::with_capacity(raw_data.len() / 6);
                 let mut stage = 0;
-                let mut current_byte : u8 = 0;
+                let mut current_byte : u8;
                 let mut carry : u8 = 0;
                 
                 for byte_val in raw_data 
