@@ -14,14 +14,16 @@ pub enum BlockMode {
 }
 
 /// Struct for CBC mode of an algorithm
-pub struct CBC_Mode<T1,T2> 
+pub struct CBC_Mode<'a,T1,T2> 
     where T1 : FnMut(& [u8], & [u8]) -> Vec<u8>,
-          T2 : FnMut(& [u8], & [u8]) -> Vec<u8>
+          T2 : FnMut(& [u8], & [u8]) -> Vec<u8>,
+          T1 : 'a,
+          T2 : 'a
 {
     /// A crypt function that takes plain text and key and returns a EBC encrypted block
-    enc_func :  T1,
+    enc_func :  &'a mut T1,
     /// A crypt function that takes crypt text and key and returns a EBC decrypted block
-    dec_func :  T2,
+    dec_func :  &'a mut T2,
     /// Internal state that holds the last encrypted block ( after CBC transform applied)
     last_eciph : Vec<u8>,
     /// Internal state that holds the last decrypted block ( after CBC transform applied)
@@ -31,9 +33,11 @@ pub struct CBC_Mode<T1,T2>
 }
 
 /// Implementation of methods for interacting with CBC Mode
-impl<T1,T2> CBC_Mode<T1,T2>
+impl<'a,T1,T2> CBC_Mode<'a,T1,T2>
     where T1 : FnMut(& [u8], & [u8]) -> Vec<u8>,
-          T2 : FnMut(& [u8], & [u8]) -> Vec<u8>
+          T2 : FnMut(& [u8], & [u8]) -> Vec<u8>,
+          T1 : 'a,
+          T2 : 'a
 {
     /// Returns an initialized CBC Mode struct
     ///
@@ -43,7 +47,7 @@ impl<T1,T2> CBC_Mode<T1,T2>
     ///  'd_func'  - A function that takes a crypt text and a key and returns a ECB decrypted block
     ///  'bsize' - The block size
     ///  'iv'    - An initialization vector.  Function extends to block size with zeros.
-    pub fn new(e_func : T1, d_func : T2, bsize : u32, iv : & Vec<u8>) -> CBC_Mode<T1,T2> {
+    pub fn new(e_func : &'a mut T1, d_func : &'a mut T2, bsize : u32, iv : & Vec<u8>) -> CBC_Mode<'a,T1,T2> {
         let mut c = CBC_Mode { 
             enc_func : e_func,
             dec_func : d_func,
@@ -132,7 +136,7 @@ impl<T1,T2> CBC_Mode<T1,T2>
 }
 
 
-/// Oracle Function that takes a plain text and encrypts it under AES with 16 byte key
+/// Function that takes a plain text and encrypts it under AES with 16 byte key
 /// under ECB mode or CBC mode with random iv.  Which mode is chosen with p=.5. Additionally
 /// 5-10 bytes are prepending randomly before and after the plaintext.
 ///
@@ -148,7 +152,7 @@ impl<T1,T2> CBC_Mode<T1,T2>
 /// #Panics
 /// - If insufficient entropy exists in OsRng
 /// - If plain is not a multiple of block size
-pub fn oracle_function<T>(plain : &[u8], block_size : usize,mut f : T) -> (Vec<u8>,BlockMode) 
+pub fn random_key_function<T>(plain : &[u8], block_size : usize,f : &mut T) -> (Vec<u8>,BlockMode) 
     where T : FnMut(& [u8], & [u8]) -> Vec<u8>
 {
     let mut r = rand::OsRng::new().expect("");
@@ -181,14 +185,14 @@ pub fn oracle_function<T>(plain : &[u8], block_size : usize,mut f : T) -> (Vec<u
     let coin = r.next_u32() % 2;
     let mut result : Vec<u8> = Vec::new(); 
    #[allow(unused_variables)]
-    let blank = | a : &[u8], k : &[u8]| -> Vec<u8> { Vec::new() };
+    let mut blank = | a : &[u8], k : &[u8]| -> Vec<u8> { Vec::new() };
     let mut mode = BlockMode::ECB;
     if coin == 1
     {
         println!("Oracle Function about to Encrypt CBC {:?}, {:?}\n", aug_plain.len(), &key);
         // if true do cbc mode
         let iv = create_random_key(block_size);
-        let mut cbc  = CBC_Mode::new(f,blank, 16, &iv);
+        let mut cbc  = CBC_Mode::new(f,& mut blank, 16, &iv);
 
         result = cbc.encrypt(&aug_plain, &key).expect("");
         mode = BlockMode::CBC

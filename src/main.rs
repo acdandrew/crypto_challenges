@@ -16,7 +16,7 @@ use openssl::symm;
 
 
 fn main() { 
-    set2_challenge11();
+    set2_challenge12();
 }
 
 
@@ -172,7 +172,7 @@ fn set2_challenge10()
     // that the output vec for the update function be twice the size of its input.  Presumably this
     // is for some mode of encryption that I'm not familiar with.  Rather than having my CBC
     // function handle that weirdness I'd rather just have this copy heavy closure
-    let decr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+    let mut decr = | a : &[u8], k : &[u8]| -> Vec<u8> {
         let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
         let mut d = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Decrypt, 
                                          k, None).expect("");
@@ -185,7 +185,7 @@ fn set2_challenge10()
         temp
     };
     
-    let encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+    let mut encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
         let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
         let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
                                          k,None).expect("");
@@ -203,7 +203,7 @@ fn set2_challenge10()
     iv.resize(16,0);
     //create a CBC_Mode structure using those two closures and an IV of all ascii 0s blocksize of
     //16
-    let mut cbc = CBC_Mode::new(encr , decr, 16, &iv);
+    let mut cbc = CBC_Mode::new(& mut encr ,& mut decr, 16, &iv);
 
     //call decrypt method
     let res = encoded_string::encoded_string_from_bytes(&cbc.decrypt(&crypt.get_bytes().expect(""), &plain.get_bytes().expect("")).expect(""), EncodingType::Ascii).expect("");
@@ -227,7 +227,7 @@ fn set2_challenge11()
             // - mod_encr - uses the oracle function to encrypt (chooses ECB half the time and CBC
             //              half.  mod_encr passes out which mode was used into was_ecb
             {
-                let encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+                let mut encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
                     let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
                     let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
                                                      k,None).expect("");
@@ -241,13 +241,13 @@ fn set2_challenge11()
                     temp
                 };
 
-                let mod_encr = | a : &[u8]| -> Vec<u8> {
-                    let result = oracle_function(a, block_size as usize, encr);
+                let mut mod_encr = | a : &[u8]| -> Vec<u8> {
+                    let result = random_key_function(a, block_size as usize, & mut encr);
                     was_ecb = result.1;
                     result.0
                 };
 
-                mode = detect_block_mode(mod_encr, block_size);
+                mode = detect_block_mode(& mut mod_encr, block_size);
             }
             if  mode != was_ecb
             {
@@ -257,3 +257,66 @@ fn set2_challenge11()
 
         assert_eq!(num_bad, 0);
 }
+
+fn set2_challenge12()
+{
+    let hidden_plain = encoded_string::encoded_string_from_file("data/s2c12.txt", encoded_string::EncodingType::Base64).unwrap(); 
+    let hidden_plain_bytes = hidden_plain.get_bytes().expect("");
+    let block_size : usize = 16;
+    let key = create_random_key(block_size);
+
+    let mut mod_encr = | a : &[u8] | -> Vec<u8> {
+        let mut result : Vec<u8> = Vec::with_capacity(a.len() + hidden_plain_bytes.len());
+        result.resize(a.len() + hidden_plain_bytes.len(), 0);
+
+        // construct plain text that is chosen_input || unknown plain text
+        result[0..a.len()].copy_from_slice(&a[..]);
+        result[a.len()..].copy_from_slice(&hidden_plain_bytes[..]);
+        pkcs_7(&mut result, block_size as u32);
+
+        // all these copies is painful
+        let encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+        let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+        let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
+                                         k,None).expect("");
+
+        e.pad(false);
+        temp.resize(a.len() * 2, 0);
+        let count = e.update(a, &mut temp).expect("");
+        temp.resize(count, 0);
+        temp
+        };
+
+        // encrypt in ecb mode
+        let num_blocks = result.len() / block_size;
+        for i in 0..num_blocks {
+            let beg : usize = (block_size * i) as usize;
+            let end : usize = (block_size * (i + 1)) as usize;
+            let enc_block = encr(&result[beg..end], &key);
+            result[beg..end].copy_from_slice(&enc_block[..]);
+        }
+
+        result
+    };
+
+    let plain = ecb_prefix_attack(& mut mod_encr, hidden_plain_bytes.len() as u32);
+    let st = encoded_string::encoded_string_from_bytes(&plain, encoded_string::EncodingType::Ascii).expect("").get_val().clone();
+    println!("{}\n", st);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -321,7 +321,7 @@ mod tests {
                 };
 
                 let mod_encr = | a : &[u8]| -> Vec<u8> {
-                    let result = oracle_function(a, block_size as usize, encr);
+                    let result = random_key_function(a, block_size as usize, encr);
                     was_ecb = result.1;
                     result.0
                 };
@@ -336,8 +336,4 @@ mod tests {
 
         assert_eq!(num_bad, 0);
     }
-
-    
-
-
 }
