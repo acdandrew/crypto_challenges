@@ -63,7 +63,7 @@ pub fn ecb_prefix_attack<T>(cipher : & mut T,  num_bytes : u32) -> Vec<u8>
         known_bytes.resize(blocks as usize * block_size as usize - 1, 0xAA);
 
         // while we haven't extracted all the bytes
-        while ( found_bytes < num_bytes)
+        while found_bytes < num_bytes
         {
             // get the encrypted blocks consisting of chosen_plaintxt.len() known bytes and one target unknown byte
             let chosen_crypt = cipher(&chosen_plaintxt);

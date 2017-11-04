@@ -182,7 +182,7 @@ pub fn xor_repeat_key_break( plain : & [u8] ) -> (EncodedString, Vec<u8>)
     let mut result_scores : Vec<(Vec<u8>,u32)> = Vec::new();
     // determine key size using normalized hamming distance
     for key_size in 2..40 {
-       let mut total_edit_distance : u32;
+       let total_edit_distance : u32;
 
        #[allow(unused_variables)]
        let explicit_type : u32 = key_size;

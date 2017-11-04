@@ -16,7 +16,7 @@ use openssl::symm;
 
 
 fn main() { 
-    set2_challenge12();
+    set2_challenge13();
 }
 
 
@@ -304,19 +304,124 @@ fn set2_challenge12()
     println!("{}\n", st);
 }
 
+fn set2_challenge13()
+{
+    let block_size = 16;
+    let key = create_random_key(block_size);
+    // helper function to take user input email address
+    // and return string of form email=foo@bar.com&uid=10&role=user
+    let profile_for = | a : &str | -> String {
+        let mut result = String::new();
+        result.push_str("email=");
+        for c in a.chars() {
+            if c != '&' && c != '=' {
+                result.push(c);
+            }
+        }
+        result.push_str("&uid=10&role=user");
+        result
+    };
 
+    let mut encr = create_ecb_aes_closure(true);
+    let mut decr = create_ecb_aes_closure(false);
 
+    let mut verify_profile = | prof : &[u8] | -> bool {
+        let mut admin = false;
+        let mut plaintxt = decr(prof, &key);
+        pkcs_7_strip(&mut plaintxt, block_size as u32);
+        let s = encoded_string_from_bytes(&plaintxt, EncodingType::Ascii).expect("");
+        println!("Verifying {:?}\n", s.get_val().clone());
+        let kvs = parse_key_value_pairs(&s.get_val());
+        for kv_tuple in kvs {
+            if kv_tuple.0 == "role" && kv_tuple.1 == "admin" {
+                admin = true;
+                break;
+            }
+        }
 
+        admin
+    };
 
+    let mut encrypt_profile = | email : &str | -> Vec<u8> {
+        let data = profile_for(email);
+        println!("Encrypting string {:?}\n", data);
+        let s = EncodedString {
+            encoding : EncodingType::Ascii,
+            val : data
+        };
+        let mut bytes = s.get_bytes().expect("");
+        pkcs_7(&mut bytes, block_size as u32); 
+        return encr(&bytes, &key);
+    };
 
+    // Here there are two components to crafting an admin profile
+    // I need an encrypted profile such that role=admin.  The profile
+    // for function strips meta characters (&,=).  So I need to craft a 
+    // block that contains "admin" and the padding characters.
+    // Then I can create an email address that contains 13mod(block_size) 
+    // characters so I can use profile for to get two blocks that when decrypted
+    // reads "email=AAAAAAA@A.com&uid=10&role=". Then the previously
+    // obtained block can be appended and due to the ECB behavior I will have a
+    // profile that verifies as an admin profile.
 
+    let email_str = EncodedString {
+        encoding : EncodingType::Ascii,
+        val : "AAAA@A.comadmin".to_string()
+    };
+    let mut b : Vec<u8> = Vec::with_capacity(2 * block_size);
+    b.resize(15, 0);
 
+    b[0..15].copy_from_slice(&email_str.get_bytes().expect(""));
+    b.resize(26, 11);
 
+    let admin_str = encoded_string_from_bytes(&b, EncodingType::Ascii).expect("");
 
+    let mut admin_block = encrypt_profile(&admin_str.get_val());
+    admin_block.truncate(2 * block_size); // remove role=user block that profile_for added
+    admin_block.drain(0..block_size); // remove email= block
 
+    let final_email = "AAAAAAA@A.com".to_string(); // 13 characters total
 
+    let mut pre_admin_block = encrypt_profile(&final_email);
+    pre_admin_block.truncate(block_size * 2); // remove user block
+    pre_admin_block.append(&mut admin_block); // add admin block
+    a;ssert_eq!(false, verify_profile(&encrypt_profile(&"acdandrew@gmail.com")));
 
+    assert_eq!(true, verify_profile(&pre_admin_block));
+}
 
+/// Create a closure that does ECB AES 128 encryption or decryption
+pub fn create_ecb_aes_closure(encrypt : bool) -> Box<FnMut(&[u8], &[u8])-> Vec<u8>>
+{
+    if !encrypt
+    {
+        let result = Box::new(| a : &[u8], k : &[u8]| -> Vec<u8> {
+            let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+            let mut d = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Decrypt, 
+                                             k, None).expect("");
+            d.pad(false);
+            temp.resize(a.len() * 2, 0);
+            let count = d.update(a, &mut temp).expect("");
+            temp.resize(count,0); 
+            temp
+        });
+        return result;
+    }
+    else
+    {
+        let result = Box::new(| a : &[u8], k : &[u8]| -> Vec<u8> {
+            let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+            let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
+                                             k,None).expect("");
 
+            e.pad(false);
+            temp.resize(a.len() * 2, 0);
+            let count = e.update(a, &mut temp).expect("");
+            temp.resize(count, 0);
+            temp
+        });
+        return result;
+    }
+}
 
 
