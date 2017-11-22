@@ -385,7 +385,7 @@ fn set2_challenge13()
     let mut pre_admin_block = encrypt_profile(&final_email);
     pre_admin_block.truncate(block_size * 2); // remove user block
     pre_admin_block.append(&mut admin_block); // add admin block
-    a;ssert_eq!(false, verify_profile(&encrypt_profile(&"acdandrew@gmail.com")));
+    assert_eq!(false, verify_profile(&encrypt_profile(&"acdandrew@gmail.com")));
 
     assert_eq!(true, verify_profile(&pre_admin_block));
 }
