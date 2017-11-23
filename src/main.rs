@@ -16,7 +16,7 @@ use openssl::symm;
 
 
 fn main() { 
-    set2_challenge13();
+    set2_challenge14();
 }
 
 
@@ -388,6 +388,46 @@ fn set2_challenge13()
     assert_eq!(false, verify_profile(&encrypt_profile(&"acdandrew@gmail.com")));
 
     assert_eq!(true, verify_profile(&pre_admin_block));
+}
+
+pub fn set2_challenge14()
+{
+    let hidden_plain = encoded_string::encoded_string_from_file("data/s2c12.txt", encoded_string::EncodingType::Base64).unwrap(); 
+    let hidden_plain_bytes = hidden_plain.get_bytes().expect("");
+    let block_size : usize = 16;
+    let key = create_random_key(block_size);
+    let random_bytes = create_random_bytes(0, block_size as u32);
+
+    println!("Chose prefix of length {}\n", random_bytes.len());
+
+    let mut mod_encr = | a : &[u8] | -> Vec<u8> {
+        let mut result : Vec<u8> = Vec::with_capacity(random_bytes.len() + a.len() + hidden_plain_bytes.len());
+        result.resize(random_bytes.len() + a.len() + hidden_plain_bytes.len(), 0);
+
+        // construct plain text that is chosen_input || unknown plain text
+        result[0..random_bytes.len()].copy_from_slice(&random_bytes[..]);
+        result[random_bytes.len()..(random_bytes.len() + a.len())].copy_from_slice(&a[..]);
+        result[(random_bytes.len() + a.len())..].copy_from_slice(&hidden_plain_bytes[..]);
+        pkcs_7(&mut result, block_size as u32);
+
+        let mut encr = create_ecb_aes_closure(true);
+        //let mut decr = create_ecb_aes_closure(false);
+        
+        // encrypt in ecb mode
+        let num_blocks = result.len() / block_size;
+        for i in 0..num_blocks {
+            let beg : usize = (block_size * i) as usize;
+            let end : usize = (block_size * (i + 1)) as usize;
+            let enc_block = encr(&result[beg..end], &key);
+            result[beg..end].copy_from_slice(&enc_block[..]);
+        }
+
+        result
+    };
+
+    let plain = ecb_prefix_attack(& mut mod_encr, hidden_plain_bytes.len() as u32);
+    let st = encoded_string::encoded_string_from_bytes(&plain, encoded_string::EncodingType::Ascii).expect("").get_val().clone();
+    println!("{}\n", st);
 }
 
 /// Create a closure that does ECB AES 128 encryption or decryption

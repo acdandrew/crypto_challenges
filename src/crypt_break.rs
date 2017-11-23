@@ -49,6 +49,10 @@ pub fn ecb_prefix_attack<T>(cipher : & mut T,  num_bytes : u32) -> Vec<u8>
 
     let mode_type = detect_block_mode(cipher, block_size as u32);
 
+    let prefix = detect_prefix(cipher, block_size);
+
+    println!("Detected prefix of length {}\n", prefix);
+
     // if we have a valid setup to extract bytes
     if mode_type == BlockMode::ECB && block_size > 0
     {
@@ -57,10 +61,10 @@ pub fn ecb_prefix_attack<T>(cipher : & mut T,  num_bytes : u32) -> Vec<u8>
         let mut found_bytes = 0;
 
         // choose plaintxt as large as the buffer to find
-        let mut chosen_plaintxt : Vec<u8> = Vec::with_capacity(blocks as usize * block_size);
-        let mut known_bytes : Vec<u8> = Vec::with_capacity(blocks as usize * block_size);
-        chosen_plaintxt.resize(blocks as usize * block_size as usize - 1, 0xAA);
-        known_bytes.resize(blocks as usize * block_size as usize - 1, 0xAA);
+        let mut chosen_plaintxt : Vec<u8> = Vec::with_capacity(blocks as usize * block_size + prefix);
+        let mut known_bytes : Vec<u8> = Vec::with_capacity(blocks as usize * block_size + prefix);
+        chosen_plaintxt.resize(blocks as usize * block_size as usize - 1 + prefix, 0xAA);
+        known_bytes.resize(blocks as usize * block_size as usize - 1 + prefix, 0xAA);
 
         // while we haven't extracted all the bytes
         while found_bytes < num_bytes
@@ -99,7 +103,7 @@ pub fn ecb_prefix_attack<T>(cipher : & mut T,  num_bytes : u32) -> Vec<u8>
 /// Function that detects block size of a cipher
 ///
 /// #Arguments
-/// 'cipher' - the cipher function to attack
+/// 'cipher' - the cipher function to analyze
 ///
 /// #Outputs
 /// usize - the block size
@@ -120,4 +124,35 @@ pub fn detect_block_size<T>(cipher : & mut T) -> usize
     }
 
     (next_block_size - initial_size) as usize
+}
+
+/// Function that detects the prefix length for a cipher that
+/// does encrypt(Prefix || my string || postfix)
+///
+/// #Arguments
+/// 'cipher' - the cipher function to analyze
+/// 'block_size' - the block size of the cipher
+///
+/// #Outputs
+/// usize - the prefix length
+pub fn detect_prefix<T>(cipher : & mut T, block_size : usize) -> usize
+    where T : FnMut(& [u8]) -> Vec<u8>
+{
+    // for true accuracy this should probably be a random set of bytes
+    // and take a probabilistic approach of running the test n times
+    // since in the case that the postfix or prefix contains
+    // 0xAB * 2 * block_size we would get a false positive
+    let mut a : Vec<u8> = Vec::with_capacity(block_size * 2);
+    a.resize(2 * block_size, 0xAB);
+
+    let mut num_pushed = 0;
+    let mut crypt = cipher(&a);
+    while detect_duplicates(&crypt, block_size as u32) == 0
+    {
+        a.insert(0, 0xBA);
+        num_pushed += 1;
+        crypt = cipher(&a);
+    }
+
+    num_pushed
 }

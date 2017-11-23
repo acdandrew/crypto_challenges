@@ -55,19 +55,36 @@ pub fn inplace_xor_two_vecs( vec_a : &mut[u8] , vec_b : &[u8])
     }
 }
 
-/// Create random (?) key using rand crate (not cryptographically safe afaik)
+/// Quick and Dirty create random (?) key using rand crate (not cryptographically safe afaik)
 /// panics if it cannot create a OsRng object or if there is not a sufficiently 
-/// large entropy pool behind the os implementation
+/// large entropy pool behind the os implementation.  Do not use seriously obviously
 pub fn create_random_key( key_size : usize ) -> Vec<u8>
 {
     let mut r = rand::OsRng::new().expect("");
     let mut key : Vec<u8> = Vec::with_capacity(key_size);
 
-    key.resize(key_size, 0); 
+    key.resize(key_size, 0);  
 
     r.fill_bytes(&mut key);
     
     key
+}
+
+/// Quick and Dirty create byte string key using rand crate (not cryptographically safe afaik)
+/// panics if it cannot create a OsRng object or if there is not a sufficiently 
+/// large entropy pool behind the os implementation.  Do not use seriously obviously
+pub fn create_random_bytes( min_size : u32, max_size : u32) -> Vec<u8>
+{
+    let mut r = rand::OsRng::new().expect("");
+    let mut result : Vec<u8> = Vec::with_capacity(max_size as usize);
+
+    let length = r.next_u32();
+
+    result.resize((min_size + (length % (max_size - min_size))) as usize,0);
+
+    r.fill_bytes(&mut result);
+
+    result
 }
 
 /// Parse a string of key values of form key1=val1&key2=val2...
