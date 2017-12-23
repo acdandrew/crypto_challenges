@@ -119,7 +119,6 @@ impl<'a,T1,T2> CBC_Mode<'a,T1,T2>
         for i in 0..num_blocks {
             let beg : usize = (self.block_size * i) as usize;
             let end : usize = (self.block_size * (i + 1)) as usize;
-            println!("Decrypted block {:?}\n", i);
             // decrypt the first block
             plain[beg..end].copy_from_slice(
                 &((self.dec_func)(&crypt[beg..end], &key[0..self.block_size as usize])));

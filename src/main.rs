@@ -16,7 +16,7 @@ use openssl::symm;
 
 
 fn main() { 
-    set2_challenge14();
+    set2_challenge16();
 }
 
 
@@ -428,6 +428,120 @@ pub fn set2_challenge14()
     let plain = ecb_prefix_attack(& mut mod_encr, hidden_plain_bytes.len() as u32);
     let st = encoded_string::encoded_string_from_bytes(&plain, encoded_string::EncodingType::Ascii).expect("").get_val().clone();
     println!("{}\n", st);
+}
+
+pub fn set2_challenge16()
+{
+    // write encryption function that appends and prepends necessary strings
+    let block_size : usize = 16;
+    let mut iv : Vec<u8> = Vec::with_capacity(16);
+    iv.resize(16,0);
+    //create a CBC_Mode structure using those two closures and an IV of all ascii 0s blocksize of
+    //16
+    let mut decr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+        let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+        let mut d = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Decrypt, 
+                                         k, None).expect("");
+        d.pad(false);
+        temp.resize(a.len() * 2, 0);
+        let count = d.update(a, &mut temp).expect("");
+        temp.resize(count,0); 
+        temp
+    };
+    
+    let mut encr = | a : &[u8], k : &[u8]| -> Vec<u8> {
+        let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
+        let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
+                                         k,None).expect("");
+
+        e.pad(false);
+        temp.resize(a.len() * 2, 0);
+        let count = e.update(a, &mut temp).expect("");
+        temp.resize(count, 0);
+        temp
+    };
+
+    let mut cbc = CBC_Mode::new(& mut encr ,& mut decr, block_size as u32, &iv);
+    let key = create_random_key(block_size);
+    
+    // I changed ';' -> '&' to be consistent with key value pairings from an earlier
+    // challenge so I could reuse the same key value function
+    let prefix = EncodedString {
+        encoding : EncodingType::Ascii,
+        val : "comment1=cooking%20MCs&userdata=".to_string()
+    };
+    let postfix = EncodedString {
+        encoding : EncodingType::Ascii,
+        val : "&comment2=%20like%20a%20pound%20of%20bacon".to_string()
+    };
+    let mut input : Vec<u8> = Vec::with_capacity(block_size);
+    input.resize(block_size, 0);
+
+    let mut crypt : Vec<u8>;
+    // create enclosing scope so that mod_encr mutable borrow on cbc expires
+    {
+     let mut mod_encr = | a : &[u8] | -> Vec<u8> {
+    
+        let prefix_bytes = prefix.get_bytes().expect("");
+        let postfix_bytes = postfix.get_bytes().expect("");
+        let capacity = prefix_bytes.len() + postfix_bytes.len() + a.len();
+        let mut result : Vec<u8> = Vec::with_capacity(capacity);
+        result.resize(capacity, 0);
+        result[0..prefix_bytes.len()].copy_from_slice(&prefix_bytes);
+        result[prefix_bytes.len()..prefix_bytes.len() + a.len()].copy_from_slice(a);
+        result[prefix_bytes.len()+a.len()..].copy_from_slice(&postfix_bytes);
+
+        // construct plain text that is chosen_input || unknown plain text
+        pkcs_7(&mut result, block_size as u32);
+
+        // encrypt in ecb mode
+        result = cbc.encrypt(&result, &key).expect("");
+
+        result
+    };
+
+    crypt = mod_encr(&input);
+    }
+
+    let mut verify_profile = | prof : &[u8] | -> bool {
+        let mut admin = false;
+        let mut plaintxt = cbc.decrypt(prof, &key).expect("");
+        pkcs_7_strip(&mut plaintxt, block_size as u32);
+        let s = encoded_string_from_bytes(&plaintxt, EncodingType::Ascii).expect("");
+        let kvs = parse_key_value_pairs(&s.get_val());
+        for kv_tuple in kvs {
+            if kv_tuple.0 == "admin" && kv_tuple.1 == "true" {
+                admin = true;
+                break;
+            }
+        }
+
+        admin
+    };
+
+
+
+    let desired_string = EncodedString {
+        encoding : EncodingType::Ascii,
+        val : "aabcd&admin=true".to_string()
+    };
+    let mut desired_bytes = desired_string.get_bytes().expect("");
+            
+    // let  P2 - our input block
+    //      C1 - the cipher text output from encrypting block 1
+    //      T2 - our desired plain text
+    //      C2 - the cipher text output from encrypting block 2 (P2)
+    //
+    //      For CBC mode C2 = AES_ENCR(P2 XOR C1)
+    //                   P2 = AES_DECR(C2) XOR C1
+    //                   and since AES_DECR(C2) = P2 XOR C1 if we modify C1 in cipher text
+    //                   to be the original C1 XOR T2 then AES_DECR(C2) = P2 XOR C1 XOR C1 XOR T2
+    //                   and since P2 is all zeros AES_DECR(C2) ends up being T2.
+    inplace_xor_two_vecs(&mut desired_bytes, &crypt[block_size..(2 * block_size)]);
+    crypt[block_size..(2*block_size)].copy_from_slice(&desired_bytes);
+    assert_eq!(true, verify_profile(&crypt));
+
+    
 }
 
 /// Create a closure that does ECB AES 128 encryption or decryption
