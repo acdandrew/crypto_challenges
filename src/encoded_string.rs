@@ -251,3 +251,4 @@ pub fn encoded_string_from_file(filename : &str, enc : EncodingType) -> Option<E
        Err(_) => return None
    }
 }
+

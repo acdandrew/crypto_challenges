@@ -3,6 +3,9 @@ pub mod encryption_utilities;
 pub mod crypt_util;
 pub mod crypt_algo;
 pub mod crypt_break;
+pub mod set1;
+pub mod set2;
+pub mod set3;
 
 extern crate rand;
 extern crate openssl;
