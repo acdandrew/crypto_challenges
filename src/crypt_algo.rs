@@ -4,6 +4,8 @@ use openssl::symm;
 use crypt_util::*;
 use rand::Rng;
 
+type EncryptionMethodType = Box<FnMut(&[u8], &[u8])-> Vec<u8> + 'static>;
+
 /// An enum to reperesent cipher block modes of operation
 #[derive(Clone, Copy, PartialEq)]
 pub enum BlockMode {
@@ -13,16 +15,12 @@ pub enum BlockMode {
 }
 
 /// Struct for CBC mode of an algorithm
-pub struct CBC_Mode<T1,T2> 
-    where T1 : FnMut(& [u8], & [u8]) -> Vec<u8>,
-          T2 : FnMut(& [u8], & [u8]) -> Vec<u8>,
-         // T1 : 'a,
-         // T2 : 'a
+pub struct CBC_Mode 
 {
     /// A crypt function that takes plain text and key and returns a EBC encrypted block
-    enc_func :  Box<T1>,
+    enc_func :  EncryptionMethodType,
     /// A crypt function that takes crypt text and key and returns a EBC decrypted block
-    dec_func :  Box<T2>,
+    dec_func :  EncryptionMethodType,
     /// Internal state that holds the last encrypted block ( after CBC transform applied)
     last_eciph : Vec<u8>,
     /// Internal state that holds the last decrypted block ( after CBC transform applied)
@@ -32,11 +30,7 @@ pub struct CBC_Mode<T1,T2>
 }
 
 /// Implementation of methods for interacting with CBC Mode
-impl<T1,T2> CBC_Mode<T1,T2>
-    where T1 : FnMut(& [u8], & [u8]) -> Vec<u8>,
-          T2 : FnMut(& [u8], & [u8]) -> Vec<u8>,
-        //  T1 : 'a,
-        //  T2 : 'a
+impl CBC_Mode
 {
     /// Returns an initialized CBC Mode struct
     ///
@@ -46,7 +40,7 @@ impl<T1,T2> CBC_Mode<T1,T2>
     ///  'd_func'  - A function that takes a crypt text and a key and returns a ECB decrypted block
     ///  'bsize' - The block size
     ///  'iv'    - An initialization vector.  Function extends to block size with zeros.
-    pub fn new(e_func : Box<T1>, d_func : Box<T2>, bsize : u32, iv : & Vec<u8>) -> CBC_Mode<T1,T2> {
+    pub fn new(e_func : EncryptionMethodType , d_func : EncryptionMethodType, bsize : u32, iv : & Vec<u8>) -> CBC_Mode {
         let mut c = CBC_Mode { 
             enc_func : e_func,
             dec_func : d_func,
@@ -150,8 +144,7 @@ impl<T1,T2> CBC_Mode<T1,T2>
 /// #Panics
 /// - If insufficient entropy exists in OsRng
 /// - If plain is not a multiple of block size
-pub fn random_key_function<T>(plain : &[u8], block_size : usize,mut f : Box<T>) -> (Vec<u8>,BlockMode) 
-    where T : FnMut(& [u8], & [u8]) -> Vec<u8>
+pub fn random_key_function(plain : &[u8], block_size : usize,mut f : EncryptionMethodType) -> (Vec<u8>,BlockMode) 
 {
     let mut r = rand::OsRng::new().expect("");
 
@@ -211,8 +204,9 @@ pub fn random_key_function<T>(plain : &[u8], block_size : usize,mut f : Box<T>) 
     (result, mode)
 }
 
+
 /// Create a closure that does ECB AES 128 encryption or decryption
-pub fn create_ecb_aes_closure(encrypt : bool) -> Box<FnMut(&[u8], &[u8])-> Vec<u8>>
+pub fn create_ecb_aes_closure(encrypt : bool) -> EncryptionMethodType//Box<FnMut(&[u8], &[u8])-> Vec<u8>>
 {
     //FIXME These are comically inefficient because of this wierd assert that the library requires
     // that the output vec for the update function be twice the size of its input.  Presumably this
@@ -220,7 +214,7 @@ pub fn create_ecb_aes_closure(encrypt : bool) -> Box<FnMut(&[u8], &[u8])-> Vec<u
     // function handle that weirdness I'd rather just have this copy heavy closure
     if !encrypt
     {
-        let result = Box::new(| a : &[u8], k : &[u8]| -> Vec<u8> {
+        let result = Box::new(move | a : &[u8], k : &[u8]| -> Vec<u8> {
             let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
             let mut d = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Decrypt, 
                                              k, None).expect("");
@@ -229,12 +223,12 @@ pub fn create_ecb_aes_closure(encrypt : bool) -> Box<FnMut(&[u8], &[u8])-> Vec<u
             let count = d.update(a, &mut temp).expect("");
             temp.resize(count,0); 
             temp
-        });
+        }); 
         return result;
     }
     else
     {
-        let result = Box::new(| a : &[u8], k : &[u8]| -> Vec<u8> {
+        let result = Box::new(move | a : &[u8], k : &[u8]| -> Vec<u8> {
             let mut temp : Vec<u8> = Vec::with_capacity(a.len() * 2);
             let mut e = symm::Crypter::new(symm::Cipher::aes_128_ecb(), symm::Mode::Encrypt, 
                                              k,None).expect("");

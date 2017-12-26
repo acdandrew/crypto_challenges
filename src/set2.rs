@@ -15,7 +15,8 @@ pub fn set2_challenge10()
         encoding : encoded_string::EncodingType::Ascii,
         val : "YELLOW SUBMARINE".to_string() 
     };
-    // what are trait bounds and why does encr not satisfy them?  
+
+
     let encr = create_ecb_aes_closure(true);
     let decr = create_ecb_aes_closure(false);
     
@@ -248,8 +249,8 @@ pub fn set2_challenge16()
 
     //let mut encr = create_ecb_aes_closure(true);
     //let mut decr = create_ecb_aes_closure(false);
-    let decr = Box::new(| a : &[u8], k : &[u8]| -> Vec<u8> { Vec::new() });
-    let encr = Box::new(| a : &[u8], k : &[u8]| -> Vec<u8> { Vec::new() });
+    let encr = create_ecb_aes_closure(true);
+    let decr = create_ecb_aes_closure(false);
 
     let mut cbc = CBC_Mode::new(encr , decr, block_size as u32, &iv);
     let key = create_random_key(block_size);
