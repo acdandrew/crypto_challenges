@@ -4,7 +4,7 @@ use openssl::symm;
 use crypt_util::*;
 use rand::Rng;
 
-type EncryptionMethodType = Box<FnMut(&[u8], &[u8])-> Vec<u8> + 'static>;
+type EncryptionMethodType = Box<FnMut(&[u8], &[u8])-> Vec<u8>>;
 
 /// An enum to reperesent cipher block modes of operation
 #[derive(Clone, Copy, PartialEq)]
@@ -77,8 +77,8 @@ impl CBC_Mode
 
             //initialize crypt with last_eciph
             crypt[beg..end].copy_from_slice(&self.last_eciph[0..self.block_size as usize]); // copy
-            //xor crypt with plain
 
+            //xor crypt with plain
             inplace_xor_two_vecs(& mut crypt[beg..end], &plain[beg..end]);
 
             //inline encrypt into last ciph

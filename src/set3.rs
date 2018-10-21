@@ -29,12 +29,21 @@ pub fn set3_challenge17()
     }
 
 
-
     // generate function to choose random string from 10 provided and encrypt it under consistent
-    // aes key
+    let encr = create_ecb_aes_closure(true);
+    let decr = create_ecb_aes_closure(false);
     
+    let mut iv : Vec<u8> = Vec::with_capacity(16);
+    iv.resize(16,0);
+    let mut cbc = CBC_Mode::new(encr , decr, 16, &iv);
+
+
+    let mut r = rand::OsRng::new().expect("");
+    let num_strings = strings.len();
+    let chosen_string = &strings[r.next_u32() % num_strings];
     // write function to return true or false if padding is valid after decryption
 
     // write code to modify cipher text and decrypt given string
     println!("Done\n");
 }
+
